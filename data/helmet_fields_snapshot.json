@@ -1,0 +1,801 @@
+{
+  "reference_game_version": "1.8.45850.0",
+  "record_count": 411,
+  "decrypted_blob_size": 384196,
+  "helmet_field_count": 158,
+  "kit_id_delta": -28,
+  "kit_type_delta": 12,
+  "helmet_type": 1,
+  "helmet_fields": [
+    {
+      "offset": 2616,
+      "kit_id": 2033511819,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 5384,
+      "kit_id": 90720489,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 7960,
+      "kit_id": 1672102597,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 10536,
+      "kit_id": 2446816200,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 13304,
+      "kit_id": 2745690429,
+      "native_passive_id": 8
+    },
+    {
+      "offset": 15976,
+      "kit_id": 2362677051,
+      "native_passive_id": 8
+    },
+    {
+      "offset": 18648,
+      "kit_id": 4089246094,
+      "native_passive_id": 8
+    },
+    {
+      "offset": 21416,
+      "kit_id": 3996028128,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 28728,
+      "kit_id": 2355853539,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 28936,
+      "kit_id": 263608846,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 29144,
+      "kit_id": 4138636345,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 29352,
+      "kit_id": 4264835049,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 31736,
+      "kit_id": 1481290619,
+      "native_passive_id": 9
+    },
+    {
+      "offset": 34312,
+      "kit_id": 2952500571,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 36984,
+      "kit_id": 2547476111,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 39560,
+      "kit_id": 2891794937,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 42328,
+      "kit_id": 3260726132,
+      "native_passive_id": 7
+    },
+    {
+      "offset": 45480,
+      "kit_id": 3172884100,
+      "native_passive_id": 7
+    },
+    {
+      "offset": 48440,
+      "kit_id": 2792362215,
+      "native_passive_id": 7
+    },
+    {
+      "offset": 51400,
+      "kit_id": 2978704486,
+      "native_passive_id": 7
+    },
+    {
+      "offset": 53976,
+      "kit_id": 3964228207,
+      "native_passive_id": 9
+    },
+    {
+      "offset": 56552,
+      "kit_id": 2511084797,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 59128,
+      "kit_id": 310587030,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 61704,
+      "kit_id": 773157227,
+      "native_passive_id": 8
+    },
+    {
+      "offset": 64472,
+      "kit_id": 1707113970,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 66664,
+      "kit_id": 2170995148,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 69432,
+      "kit_id": 3664047629,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 72008,
+      "kit_id": 2327628884,
+      "native_passive_id": 5
+    },
+    {
+      "offset": 74584,
+      "kit_id": 556660324,
+      "native_passive_id": 5
+    },
+    {
+      "offset": 77160,
+      "kit_id": 951081859,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 82104,
+      "kit_id": 1546684370,
+      "native_passive_id": 9
+    },
+    {
+      "offset": 82312,
+      "kit_id": 4004823774,
+      "native_passive_id": 9
+    },
+    {
+      "offset": 84888,
+      "kit_id": 4016909011,
+      "native_passive_id": 9
+    },
+    {
+      "offset": 87848,
+      "kit_id": 541028876,
+      "native_passive_id": 7
+    },
+    {
+      "offset": 90808,
+      "kit_id": 793893084,
+      "native_passive_id": 7
+    },
+    {
+      "offset": 91016,
+      "kit_id": 1685612430,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 91224,
+      "kit_id": 1951513251,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 93800,
+      "kit_id": 3508381787,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 96376,
+      "kit_id": 2776529082,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 99528,
+      "kit_id": 3517336259,
+      "native_passive_id": 5
+    },
+    {
+      "offset": 102680,
+      "kit_id": 4242416506,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 105256,
+      "kit_id": 2979884042,
+      "native_passive_id": 16
+    },
+    {
+      "offset": 112568,
+      "kit_id": 3825651408,
+      "native_passive_id": 8
+    },
+    {
+      "offset": 112776,
+      "kit_id": 1605151673,
+      "native_passive_id": 8
+    },
+    {
+      "offset": 112984,
+      "kit_id": 1155085856,
+      "native_passive_id": 8
+    },
+    {
+      "offset": 115560,
+      "kit_id": 1303420068,
+      "native_passive_id": 7
+    },
+    {
+      "offset": 117752,
+      "kit_id": 1210216079,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 120808,
+      "kit_id": 2671741463,
+      "native_passive_id": 31
+    },
+    {
+      "offset": 123384,
+      "kit_id": 3020362878,
+      "native_passive_id": 31
+    },
+    {
+      "offset": 125960,
+      "kit_id": 139999425,
+      "native_passive_id": 9
+    },
+    {
+      "offset": 130904,
+      "kit_id": 2141363041,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 131112,
+      "kit_id": 2606482720,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 131320,
+      "kit_id": 3682449066,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 131528,
+      "kit_id": 1521442150,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 131736,
+      "kit_id": 2231876405,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 131944,
+      "kit_id": 34232232,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 132152,
+      "kit_id": 1376017051,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 132360,
+      "kit_id": 2015397810,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 139672,
+      "kit_id": 1092689023,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 146984,
+      "kit_id": 255960702,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 147192,
+      "kit_id": 2070152922,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 147400,
+      "kit_id": 910516311,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 147608,
+      "kit_id": 1386151525,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 147816,
+      "kit_id": 3642074737,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 148024,
+      "kit_id": 3826757243,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 148232,
+      "kit_id": 1146282869,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 148440,
+      "kit_id": 202045192,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 151016,
+      "kit_id": 1447229978,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 153208,
+      "kit_id": 1545242578,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 153416,
+      "kit_id": 1755983237,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 153624,
+      "kit_id": 3666591402,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 153832,
+      "kit_id": 309304502,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 154040,
+      "kit_id": 88270577,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 154248,
+      "kit_id": 3064132714,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 154456,
+      "kit_id": 2733962024,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 180712,
+      "kit_id": 562097037,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 180920,
+      "kit_id": 904434511,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 181128,
+      "kit_id": 1332530540,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 181336,
+      "kit_id": 1084741268,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 181544,
+      "kit_id": 2363964846,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 181752,
+      "kit_id": 1773333561,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 181960,
+      "kit_id": 639388242,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 182168,
+      "kit_id": 1171786296,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 182376,
+      "kit_id": 3020061552,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 182584,
+      "kit_id": 3750644442,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 182792,
+      "kit_id": 4000324077,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 183000,
+      "kit_id": 3792160842,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 183208,
+      "kit_id": 275807529,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 183416,
+      "kit_id": 4257171265,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 183624,
+      "kit_id": 3057185732,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 183832,
+      "kit_id": 2218652020,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 184040,
+      "kit_id": 4191752871,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 186616,
+      "kit_id": 2597729678,
+      "native_passive_id": 13
+    },
+    {
+      "offset": 189192,
+      "kit_id": 3747577035,
+      "native_passive_id": 13
+    },
+    {
+      "offset": 191768,
+      "kit_id": 91360070,
+      "native_passive_id": 14
+    },
+    {
+      "offset": 194728,
+      "kit_id": 1935281163,
+      "native_passive_id": 16
+    },
+    {
+      "offset": 197304,
+      "kit_id": 2467151919,
+      "native_passive_id": 17
+    },
+    {
+      "offset": 199688,
+      "kit_id": 1490406789,
+      "native_passive_id": 18
+    },
+    {
+      "offset": 202264,
+      "kit_id": 2831092939,
+      "native_passive_id": 10
+    },
+    {
+      "offset": 205416,
+      "kit_id": 619144634,
+      "native_passive_id": 19
+    },
+    {
+      "offset": 208376,
+      "kit_id": 403022405,
+      "native_passive_id": 20
+    },
+    {
+      "offset": 211048,
+      "kit_id": 1383669348,
+      "native_passive_id": 21
+    },
+    {
+      "offset": 213624,
+      "kit_id": 2086225563,
+      "native_passive_id": 1
+    },
+    {
+      "offset": 216392,
+      "kit_id": 1309115822,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 219064,
+      "kit_id": 4033534167,
+      "native_passive_id": 12
+    },
+    {
+      "offset": 222024,
+      "kit_id": 2310126051,
+      "native_passive_id": 6
+    },
+    {
+      "offset": 224984,
+      "kit_id": 3503184839,
+      "native_passive_id": 11
+    },
+    {
+      "offset": 227560,
+      "kit_id": 4248996228,
+      "native_passive_id": 11
+    },
+    {
+      "offset": 230136,
+      "kit_id": 3534240935,
+      "native_passive_id": 39
+    },
+    {
+      "offset": 233096,
+      "kit_id": 3172433783,
+      "native_passive_id": 33
+    },
+    {
+      "offset": 235864,
+      "kit_id": 1105008717,
+      "native_passive_id": 38
+    },
+    {
+      "offset": 238248,
+      "kit_id": 1203563552,
+      "native_passive_id": 32
+    },
+    {
+      "offset": 240824,
+      "kit_id": 3991525047,
+      "native_passive_id": 40
+    },
+    {
+      "offset": 243400,
+      "kit_id": 2773961410,
+      "native_passive_id": 35
+    },
+    {
+      "offset": 245976,
+      "kit_id": 1318035279,
+      "native_passive_id": 2
+    },
+    {
+      "offset": 250824,
+      "kit_id": 3730267817,
+      "native_passive_id": 13
+    },
+    {
+      "offset": 253400,
+      "kit_id": 796167044,
+      "native_passive_id": 13
+    },
+    {
+      "offset": 256360,
+      "kit_id": 238751935,
+      "native_passive_id": 14
+    },
+    {
+      "offset": 258552,
+      "kit_id": 3530620108,
+      "native_passive_id": 14
+    },
+    {
+      "offset": 261032,
+      "kit_id": 2477602867,
+      "native_passive_id": 16
+    },
+    {
+      "offset": 263800,
+      "kit_id": 3698525369,
+      "native_passive_id": 16
+    },
+    {
+      "offset": 266088,
+      "kit_id": 1412199726,
+      "native_passive_id": 17
+    },
+    {
+      "offset": 268280,
+      "kit_id": 2331067702,
+      "native_passive_id": 17
+    },
+    {
+      "offset": 271144,
+      "kit_id": 4131844227,
+      "native_passive_id": 18
+    },
+    {
+      "offset": 274104,
+      "kit_id": 620606144,
+      "native_passive_id": 18
+    },
+    {
+      "offset": 276680,
+      "kit_id": 1745464610,
+      "native_passive_id": 10
+    },
+    {
+      "offset": 278488,
+      "kit_id": 1736175106,
+      "native_passive_id": 10
+    },
+    {
+      "offset": 281160,
+      "kit_id": 3704509247,
+      "native_passive_id": 19
+    },
+    {
+      "offset": 283928,
+      "kit_id": 4173742975,
+      "native_passive_id": 19
+    },
+    {
+      "offset": 286888,
+      "kit_id": 995817415,
+      "native_passive_id": 20
+    },
+    {
+      "offset": 289848,
+      "kit_id": 2141814630,
+      "native_passive_id": 20
+    },
+    {
+      "offset": 292424,
+      "kit_id": 3996008186,
+      "native_passive_id": 21
+    },
+    {
+      "offset": 295192,
+      "kit_id": 4074553940,
+      "native_passive_id": 21
+    },
+    {
+      "offset": 297768,
+      "kit_id": 3840063003,
+      "native_passive_id": 33
+    },
+    {
+      "offset": 300824,
+      "kit_id": 3978514634,
+      "native_passive_id": 33
+    },
+    {
+      "offset": 303592,
+      "kit_id": 2660793694,
+      "native_passive_id": 34
+    },
+    {
+      "offset": 306168,
+      "kit_id": 2030836577,
+      "native_passive_id": 34
+    },
+    {
+      "offset": 308360,
+      "kit_id": 456121928,
+      "native_passive_id": 12
+    },
+    {
+      "offset": 311128,
+      "kit_id": 1470624541,
+      "native_passive_id": 12
+    },
+    {
+      "offset": 314088,
+      "kit_id": 2983207423,
+      "native_passive_id": 11
+    },
+    {
+      "offset": 316664,
+      "kit_id": 1938372630,
+      "native_passive_id": 11
+    },
+    {
+      "offset": 319144,
+      "kit_id": 1910769380,
+      "native_passive_id": 39
+    },
+    {
+      "offset": 322104,
+      "kit_id": 4123751987,
+      "native_passive_id": 39
+    },
+    {
+      "offset": 324488,
+      "kit_id": 2928638796,
+      "native_passive_id": 15
+    },
+    {
+      "offset": 326488,
+      "kit_id": 681084148,
+      "native_passive_id": 15
+    },
+    {
+      "offset": 328488,
+      "kit_id": 2366040666,
+      "native_passive_id": 38
+    },
+    {
+      "offset": 331160,
+      "kit_id": 3788138551,
+      "native_passive_id": 38
+    },
+    {
+      "offset": 333736,
+      "kit_id": 191298645,
+      "native_passive_id": 41
+    },
+    {
+      "offset": 336408,
+      "kit_id": 3244366537,
+      "native_passive_id": 41
+    },
+    {
+      "offset": 339080,
+      "kit_id": 3495384269,
+      "native_passive_id": 32
+    },
+    {
+      "offset": 341656,
+      "kit_id": 1483828753,
+      "native_passive_id": 32
+    },
+    {
+      "offset": 344136,
+      "kit_id": 761393401,
+      "native_passive_id": 40
+    },
+    {
+      "offset": 346904,
+      "kit_id": 935728706,
+      "native_passive_id": 40
+    },
+    {
+      "offset": 349480,
+      "kit_id": 4256773666,
+      "native_passive_id": 36
+    },
+    {
+      "offset": 351768,
+      "kit_id": 927211561,
+      "native_passive_id": 37
+    },
+    {
+      "offset": 354344,
+      "kit_id": 513033465,
+      "native_passive_id": 3
+    },
+    {
+      "offset": 356920,
+      "kit_id": 856924396,
+      "native_passive_id": 8
+    },
+    {
+      "offset": 359496,
+      "kit_id": 3443335388,
+      "native_passive_id": 8
+    }
+  ]
+}

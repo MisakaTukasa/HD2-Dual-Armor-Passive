@@ -1,0 +1,162 @@
+[
+  {
+    "id": 0,
+    "en": "None",
+    "zh": "无额外被动"
+  },
+  {
+    "id": 1,
+    "en": "Extra Padding",
+    "zh": "额外垫料"
+  },
+  {
+    "id": 2,
+    "en": "Scout",
+    "zh": "侦察"
+  },
+  {
+    "id": 3,
+    "en": "Fortified",
+    "zh": "强化"
+  },
+  {
+    "id": 5,
+    "en": "Electrical Conduit",
+    "zh": "电路导管"
+  },
+  {
+    "id": 6,
+    "en": "Engineering Kit",
+    "zh": "工程包"
+  },
+  {
+    "id": 7,
+    "en": "Med-Kit",
+    "zh": "急救包"
+  },
+  {
+    "id": 8,
+    "en": "Servo-Assisted",
+    "zh": "伺服辅助"
+  },
+  {
+    "id": 9,
+    "en": "Democracy Protects",
+    "zh": "民主护佑"
+  },
+  {
+    "id": 10,
+    "en": "Reinforced Epaulettes",
+    "zh": "强化肩章"
+  },
+  {
+    "id": 11,
+    "en": "Inflammable",
+    "zh": "易燃易爆"
+  },
+  {
+    "id": 12,
+    "en": "Peak Physique",
+    "zh": "健壮体格"
+  },
+  {
+    "id": 13,
+    "en": "Advanced Filtration",
+    "zh": "高级过滤能力"
+  },
+  {
+    "id": 14,
+    "en": "Unflinching",
+    "zh": "毫不畏缩"
+  },
+  {
+    "id": 15,
+    "en": "Acclimated",
+    "zh": "应变自如"
+  },
+  {
+    "id": 16,
+    "en": "Siege-Ready",
+    "zh": "蓄势出击"
+  },
+  {
+    "id": 17,
+    "en": "Integrated Explosives",
+    "zh": "集成炸药"
+  },
+  {
+    "id": 18,
+    "en": "Gunslinger",
+    "zh": "神枪手"
+  },
+  {
+    "id": 19,
+    "en": "Adreno-Defibrillator",
+    "zh": "肾上腺素除颤器"
+  },
+  {
+    "id": 20,
+    "en": "Ballistic Padding",
+    "zh": "防弹内衬"
+  },
+  {
+    "id": 21,
+    "en": "Desert Stormer",
+    "zh": "沙漠突击者"
+  },
+  {
+    "id": 31,
+    "en": "Feet First",
+    "zh": "护腿为上"
+  },
+  {
+    "id": 32,
+    "en": "Reduced Signature",
+    "zh": "隐迹潜踪"
+  },
+  {
+    "id": 33,
+    "en": "Rock-Solid",
+    "zh": "坚如磐石"
+  },
+  {
+    "id": 34,
+    "en": "Supplemental Adrenaline",
+    "zh": "肾上腺素补充剂"
+  },
+  {
+    "id": 35,
+    "en": "Concussive Padding, Reinforced",
+    "zh": "防震内衬（强化型）"
+  },
+  {
+    "id": 36,
+    "en": "Concussive Padding, Grenadier",
+    "zh": "防震内衬（掷弹兵型）"
+  },
+  {
+    "id": 37,
+    "en": "Concussive Padding, Hazmat",
+    "zh": "防震内衬（防化型）"
+  },
+  {
+    "id": 38,
+    "en": "Oxygenator",
+    "zh": "供氧器"
+  },
+  {
+    "id": 39,
+    "en": "Kinetic Displacement Mitigation",
+    "zh": "动能位移减缓"
+  },
+  {
+    "id": 40,
+    "en": "Blunt-Force Mitigation",
+    "zh": "钝击创伤缓和"
+  },
+  {
+    "id": 41,
+    "en": "True Grit",
+    "zh": "坚韧不拔"
+  }
+]
