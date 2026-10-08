@@ -36,7 +36,15 @@ PACKAGES = {
         "source": "mod.lua",
         "filename": "HD2-Dual-Armor-Passive.zip",
         "title": "HD2 Dual Armor Passive",
-        "description": "v1.0.3 dual armor passive menu for Steam build 25480438.",
+        "description": "v1.1.0 dual armor passive menu with data compatibility checks.",
+    },
+    "compatibility": {
+        "resource": "mods/hd2/dual_armor_compatibility_probe",
+        "guid": "4ab55064-af6c-44f0-9d79-bc3ed8044e76",
+        "source": "mod.lua",
+        "filename": "HD2-Dual-Armor-Compatibility-Probe.zip",
+        "title": "HD2 Dual Armor Compatibility Probe",
+        "description": "Read-only dependency probe. Disable the passive addon while collecting baseline evidence.",
     },
 }
 
@@ -111,6 +119,12 @@ def validated_snapshot(snapshot: dict, source: bytes) -> tuple[list[dict], dict]
     header = bytes.fromhex(header_match.group(1).decode())
     if len(header) != 32 or int.from_bytes(header[:4], "little") != layout["record_count"]:
         raise ValueError("Armor table header and snapshot count disagree")
+    read_start = min(0, layout["kit_id_delta"], layout["kit_type_delta"])
+    read_size = max(0, layout["kit_id_delta"], layout["kit_type_delta"]) + 4 - read_start
+    if read_size > 64:
+        raise ValueError("Helmet field read window exceeds the 64-byte runtime buffer")
+    layout["field_read_start"] = read_start
+    layout["field_read_size"] = read_size
     offsets, kits = set(), set()
     for index, entry in enumerate(fields, 1):
         if not isinstance(entry, dict):
@@ -132,12 +146,20 @@ def validated_snapshot(snapshot: dict, source: bytes) -> tuple[list[dict], dict]
     return fields, layout
 
 
-def build(output: Path, kind: str = "probe") -> Path:
+def render_source(kind: str = "release") -> bytes:
+    """Expand the same Lua entry for packaging and isolated runtime tests."""
     package = PACKAGES[kind]
     root = Path(__file__).resolve().parents[1]
     source = root / "src" / package["source"]
     body = source.read_bytes()
-    if kind in ("prototype", "release"):
+    if kind in ("prototype", "release", "compatibility"):
+        body = replace_once(body, b"-- @READ_ONLY@", b"local READ_ONLY = " +
+                            (b"true" if kind == "compatibility" else b"false"))
+        body = replace_once(body, b"-- @COMPATIBILITY@", (root / "src/compatibility.lua").read_bytes())
+        body = replace_once(body, b"-- @SEARCH@", (root / "src/search.lua").read_bytes())
+        if kind == "compatibility":
+            body = replace_once(body, b"-- HD2-Addon: mods/hd2/dual_armor_passive\n",
+                                ("-- HD2-Addon: " + package["resource"] + "\n").encode())
         snapshot = json.loads((root / "data" / "helmet_fields_snapshot.json").read_text(encoding="utf-8"))
         fields, layout = validated_snapshot(snapshot, body)
         rows = ",\n".join(
@@ -147,7 +169,9 @@ def build(output: Path, kind: str = "probe") -> Path:
         constants = (f"local ARMOR_BLOB_SIZE = {layout['decrypted_blob_size']}\n"
                      f"local KIT_ID_DELTA = {layout['kit_id_delta']}\n"
                      f"local KIT_TYPE_DELTA = {layout['kit_type_delta']}\n"
-                     f"local HELMET_TYPE = {layout['helmet_type']}\n")
+                     f"local HELMET_TYPE = {layout['helmet_type']}\n"
+                     f"local FIELD_READ_START = {layout['field_read_start']}\n"
+                     f"local FIELD_READ_SIZE = {layout['field_read_size']}\n")
         body = replace_once(body, b"-- @LAYOUT@", constants.encode())
         body = replace_once(body, b"-- @HELMET_FIELDS@", ("local HELMET_FIELDS = {\n" + rows + "\n}").encode())
         passives = json.loads((root / "data" / "passives.json").read_text(encoding="utf-8"))
@@ -161,6 +185,12 @@ def build(output: Path, kind: str = "probe") -> Path:
             for entry in passives
         )
         body = replace_once(body, b"-- @PASSIVES@", ("local PASSIVES = {\n" + passive_rows + "\n}").encode("utf-8"))
+    return body
+
+
+def build(output: Path, kind: str = "probe") -> Path:
+    package = PACKAGES[kind]
+    body = render_source(kind)
     archive = archive_for(package["resource"], body)
     description = package["description"] + " Requires Bingus Shared Loader v15+ / API 1."
     manifest = {
