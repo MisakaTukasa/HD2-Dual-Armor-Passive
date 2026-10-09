@@ -7,7 +7,7 @@ local module_name = READ_ONLY and "HD2DualArmorCompatibilityProbe" or "HD2DualAr
 if rawget(_G, module_name) then return end
 
 local M = {
-    revision = "1.1.0-compat2",
+    revision = "1.2.0",
     phase = "starting",
     frame = 0,
     selected = 0,
@@ -28,6 +28,7 @@ rawset(_G, module_name, M)
 -- @HELMET_FIELDS@
 
 -- @PASSIVES@
+-- @MENU_LOCALES@
 local PASSIVE_IDS = {}
 for i = 1, #PASSIVES do PASSIVE_IDS[PASSIVES[i][1]] = true end
 local HELMET_IDS = {}
@@ -93,6 +94,13 @@ local restore_protect = ffi.new("uint32_t[1]")
 local bytes = ffi.new("uint64_t[8]")
 local numbers = ffi.cast("uint32_t *", bytes)
 local word = ffi.new("uint32_t[1]")
+
+local function normalize_language(value)
+    value = type(value) == "string" and value:lower():gsub("-", "_") or "en"
+    if value == "cn" or value == "zh_cn" then return "zh_cn" end
+    if value == "tc" or value == "zh_tw" then return "zh_tw" end
+    return "en"
+end
 
 local function game_language()
     local root = os.getenv("APPDATA")
@@ -171,6 +179,10 @@ local function flush_log(force)
         "Menu: " .. tostring(M.visible),
         "Hotkey: " .. M.hotkey:upper(),
         "Hotkey status: " .. tostring(M.hotkey_status),
+        "Game text language: " .. tostring(M.language),
+        "Menu language preference: " .. tostring(M.menu_language or "automatic"),
+        "Menu display language: " .. tostring(M.display_language),
+        "Menu language status: " .. tostring(M.language_status),
         "GUI: " .. tostring(M.gui_status),
         "Scene: " .. tostring(M.scene_status),
         "Native input: " .. tostring(M.native_input_status),
@@ -354,40 +366,58 @@ local function valid_hotkey(value)
     if number and number >= 1 and number <= 12 and value == "f" .. number then return value end
 end
 
-local function read_hotkey()
+local function valid_language(value)
+    if type(value) ~= "string" then return nil end
+    value = value:match("^%s*(.-)%s*$"):lower()
+    if value == "en" or value == "zh_cn" or value == "zh_tw" then return value end
+end
+
+local function read_settings()
+    local function failed(reason) return "f9", "en", reason, reason end
     local root = os.getenv("LOCALAPPDATA")
-    if not root then return "f9", "LOCALAPPDATA unavailable" end
+    if not root then return failed("LOCALAPPDATA unavailable") end
     local file, reason, code = io.open(root .. "\\CowboyBingus\\Helldivers2\\HD2DualArmorPassive.ini", "rb")
     if not file then
         if code == 2 then return "f9" end
-        return "f9", "settings open failed: " .. tostring(reason)
+        return failed("settings open failed: " .. tostring(reason))
     end
     local ok, content = pcall(file.read, file, 4097)
     local closed, result = pcall(file.close, file)
     if not ok or type(content) ~= "string" or not closed or not result or #content > 4096 then
-        return "f9", "settings read failed or file is too large"
+        return failed("settings read failed or file is too large")
     end
-    local values = {}
+    local values, duplicates = {}, {}
     for line in content:gmatch("[^\r\n]+") do
         if line:find("%S") and not line:match("^%s*[#;]") then
             local name, value = line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
-            if not name then return "f9", "malformed settings line" end
+            if not name then return failed("malformed settings line") end
             name = name:lower()
-            if name == "settings_version" or name == "menu_hotkey" then
-                if values[name] ~= nil then return "f9", "duplicate settings field: " .. name end
+            if name == "settings_version" or name == "menu_hotkey" or name == "menu_language" then
+                if values[name] ~= nil then duplicates[name] = true end
                 values[name] = value
             end
         end
     end
-    if values.settings_version ~= "1" then return "f9", "unsupported settings version" end
+    if duplicates.settings_version then return failed("duplicate settings field: settings_version") end
+    if values.settings_version ~= "1" then return failed("unsupported settings version") end
     local key = valid_hotkey(values.menu_hotkey)
-    if not key then return "f9", "menu_hotkey must be F1-F12" end
-    return key
+    local key_error = (duplicates.menu_hotkey and "duplicate settings field: menu_hotkey")
+        or (not key and "menu_hotkey must be F1-F12") or nil
+    if key_error then key = "f9" end
+    local language, language_error
+    if values.menu_language ~= nil then
+        language = valid_language(values.menu_language)
+        language_error = (duplicates.menu_language and "duplicate settings field: menu_language")
+            or (not language and "menu_language must be zh_cn, zh_tw or en") or nil
+        if language_error then language = "en" end
+    end
+    return key, language, key_error, language_error
 end
 
-local function write_hotkey(value)
+local function write_settings(value, language)
     if READ_ONLY then return false, "read-only probe" end
     if not valid_hotkey(value) then return false, "menu_hotkey must be F1-F12" end
+    if language ~= nil and not valid_language(language) then return false, "invalid menu_language" end
     local root = os.getenv("LOCALAPPDATA")
     if not root then return false, "LOCALAPPDATA unavailable" end
     local path = root .. "\\CowboyBingus\\Helldivers2\\HD2DualArmorPassive.ini"
@@ -395,7 +425,8 @@ local function write_hotkey(value)
     local file, open_error = io.open(temporary, "wb")
     if not file then return false, "temporary settings open failed: " .. tostring(open_error) end
     local ok, written, write_error = pcall(file.write, file,
-        "settings_version=1\nmenu_hotkey=" .. value .. "\n")
+        "settings_version=1\nmenu_hotkey=" .. value .. "\n"
+            .. (language and "menu_language=" .. language .. "\n" or ""))
     local closed, result, close_error = pcall(file.close, file)
     if not ok or not written or not closed or not result then
         os.remove(temporary)
@@ -675,6 +706,9 @@ local function locate_step()
 end
 
 local s3d = rawget(_G, "s3d") or rawget(_G, "stingray")
+local SF = (function()
+-- @SYSTEM_FONT@
+end)()
 local SHIP_TABLE_HASH = "3b9bcf29e38da0a6"
 local GUI = { layers = {}, instance = nil, rects = {}, texts = {}, buttons = {}, font = nil,
     cleanup_pending = false,
@@ -745,10 +779,12 @@ local function cancel_capture()
 end
 
 local function save_hotkey(value)
-    local ok, reason = write_hotkey(value)
+    local ok, reason = write_settings(value, M.menu_language)
     if ok then
         M.hotkey = value
         M.hotkey_config_error = nil
+        M.language_config_error = nil
+        ui_state.language_message = nil
         M.hotkey_status = "saved " .. value:upper()
         capture_status("saved")
         note("menu hotkey saved: " .. value:upper())
@@ -800,6 +836,7 @@ local function world_present(list, world)
 end
 
 local function clear_gui(can_destroy)
+    if can_destroy and GUI.system_font then SF.begin_render() end
     if can_destroy and s3d and s3d.Gui then
         for _, layer in ipairs(GUI.layers) do
             for i = #layer.rects, 1, -1 do call(s3d.Gui.destroy_rect, layer.instance, layer.rects[i]) end
@@ -811,6 +848,13 @@ local function clear_gui(can_destroy)
 end
 
 local function release_gui(list)
+    if type(list) == "table" then
+        local ok, why = pcall(SF.release, s3d, list)
+        if not ok then
+            GUI.cleanup_pending = true
+            error("system font cleanup: " .. tostring(why))
+        end
+    end
     if type(list) ~= "table" then
         -- Unknown worlds may still own live GUIs. Retain their handles until a
         -- later world list tells us which instances are safe to destroy.
@@ -852,6 +896,15 @@ local function draw_rect(x, y, w, h, r, g, b, a)
 end
 
 local function draw_text(text, x, y, size, r, g, b)
+    if GUI.system_font then
+        local host
+        for _, layer in ipairs(GUI.layers) do
+            if layer.instance == GUI.instance then host = layer; break end
+        end
+        assert(host, "system font host GUI missing")
+        SF.draw(s3d, host, text, x, y, size, r, g, b, GUI.font, SF.weight_for_language(ui_state.lang))
+        return
+    end
     assert(GUI.font or GUI.native_font, "GUI font unavailable")
     local position = call(s3d.Vector3, x, y, 902)
     local color = call(s3d.Color, 255, r or 255, g or 255, b or 255)
@@ -874,29 +927,127 @@ local function button(label, x, y, w, h, action, selected)
     GUI.buttons[#GUI.buttons + 1] = {x, y, w, h, action}
 end
 
-local function active_font_hashes()
-    local image = C.game()
-    if not image then return nil, "game.dll layout unavailable" end
-    local base = image.base
-    if not C.address(0x3772268, 8) or not C.address(0x37c5478, 8) or not C.address(0x3772ee8, 8) then
-        return nil, "font slots outside game.dll"
+local function requested_language()
+    return M.menu_language or normalize_language(M.language)
+end
+
+local font_packages, font_packages_closing = {}, false
+
+local function dispose_font_package(entry)
+    local function attempt(fn)
+        local ok, why = pcall(fn, entry.handle)
+        if not ok and entry.cleanup_error ~= tostring(why) then
+            entry.cleanup_error = tostring(why)
+            note("font package cleanup failed: " .. entry.cleanup_error:sub(1, 160))
+        end
+        return ok
     end
-    local function hash(address)
-        local lo, hi = read32(address), read32(address + 4)
-        if not lo or not hi or (lo == 0 and hi == 0) then return nil end
-        return string.format("%08x%08x", hi, lo)
+    if entry.started and not entry.unloaded then
+        if not attempt(s3d.ResourcePackage.unload) then return false end
+        entry.unloaded = true
     end
-    local lo, hi = read32(base + 0x37c5478), read32(base + 0x37c547c)
-    if not lo or not hi then return nil, "font material pointer unavailable" end
-    local material_pointer = lo + hi * 0x100000000
-    if material_pointer < 0x10000 or material_pointer > MAX_ADDRESS then
-        return nil, "invalid font material pointer"
+    if not attempt(s3d.Application.release_resource_package) then return false end
+    return true
+end
+
+local function finish_font_package_cleanup()
+    -- A deferred GUI can still refer to its font. Release our package references
+    -- only after both menu layers have been destroyed or their worlds removed.
+    if not font_packages_closing or GUI.cleanup_pending or #GUI.layers > 0 then return end
+    for hash, entry in pairs(font_packages) do
+        if dispose_font_package(entry) then font_packages[hash] = nil end
     end
-    local font = hash(base + 0x3772268)
-    local material = hash(material_pointer + 24)
-    local atlas = hash(base + 0x3772ee8)
-    if not font or not material or not atlas then return nil, "active locale font unavailable" end
-    return {font = font, material = material, atlas = atlas}
+end
+
+local function font_package_failed(entry, why)
+    entry.failed, entry.retry_ms = true, M.now_ms + 5000
+    note("font package " .. entry.hash .. " failed: " .. tostring(why):sub(1, 160))
+end
+
+local function request_font_package(language)
+    if READ_ONLY or font_packages_closing then return end
+    local resources = MENU_FONTS[language]
+    local api = s3d.ResourcePackage
+    if not resources then return "unknown menu font package" end
+    for _, name in ipairs({"resource_package", "release_resource_package"}) do
+        if not C.callable(s3d.Application[name]) then
+            return "Application." .. name .. " unavailable"
+        end
+    end
+    for _, name in ipairs({"load", "has_loaded", "flush", "unload"}) do
+        if not api or not C.callable(api[name]) then return "ResourcePackage." .. name .. " unavailable" end
+    end
+    local hash = resources.package
+    local entry = font_packages[hash]
+    if entry then
+        if not entry.failed or M.now_ms < entry.retry_ms or not dispose_font_package(entry) then return end
+        font_packages[hash] = nil
+    end
+    local id = call(s3d.IdString64.from_hex, hash)
+    if not id or call(s3d.Application.can_get, "package", id) ~= true then return "font package manifest unavailable" end
+    local handle = call(s3d.Application.resource_package, id)
+    if not handle then return "font package creation failed" end
+    entry = {hash = hash, handle = handle, started = true}
+    font_packages[hash] = entry
+    local ok, why = pcall(api.load, handle)
+    if ok then note("loading menu font package " .. hash)
+    else font_package_failed(entry, why) end
+end
+
+local function poll_font_packages()
+    local changed = false
+    for _, entry in pairs(font_packages) do
+        if not entry.failed and not entry.flushed then
+            local ok, loaded = pcall(s3d.ResourcePackage.has_loaded, entry.handle)
+            if not ok then font_package_failed(entry, loaded)
+            elseif loaded == true then
+                -- flush may block an incomplete load, so call it only after
+                -- has_loaded confirms completion on the background thread.
+                local flushed, why = pcall(s3d.ResourcePackage.flush, entry.handle)
+                if flushed then
+                    entry.flushed, changed = true, true
+                    note("menu font package ready " .. entry.hash)
+                else font_package_failed(entry, why) end
+            end
+        end
+    end
+    return changed
+end
+
+local function menu_font_resources(language)
+    -- These static game fonts cover every menu character, checked from their
+    -- glyph tables during development and enforced by the package builder.
+    -- Pair each font with its verified static atlas on a GUI-local material,
+    -- independent of game text, audio and dynamically generated runtime fonts.
+    if not C.callable(s3d.Gui.material) then return nil, "font material API unavailable" end
+    for _, name in ipairs({"set_scalar", "set_vector2", "set_vector4", "set_texture"}) do
+        if not s3d.Material or not C.callable(s3d.Material[name]) then
+            return nil, "font Material." .. name .. " unavailable"
+        end
+    end
+    local missing = {}
+    for _, resources in ipairs(MENU_FONTS[language] or {}) do
+        local available = true
+        for _, field in ipairs({"font", "material", "atlas"}) do
+            local kind = field == "atlas" and "texture" or field
+            local id = call(s3d.IdString64.from_hex, resources[field])
+            if not id or call(s3d.Application.can_get, kind, id) ~= true then
+                available = false
+                missing[#missing + 1] = kind .. " " .. resources[field]
+            end
+        end
+        if available then return resources end
+    end
+    local why = request_font_package(language)
+    return nil, language .. " font resources unavailable: " .. table.concat(missing, ", ")
+        .. (why and "; " .. why or "")
+end
+
+local function debug_font_available()
+    for _, name in ipairs({"core/performance_hud/debug", "core/editor_slave/gui/arial"}) do
+        if call(s3d.Application.can_get, "font", name) == true
+            and call(s3d.Application.can_get, "material", name) == true then return name end
+    end
 end
 
 compatibility_ready = function()
@@ -905,54 +1056,48 @@ compatibility_ready = function()
     local slot = C.address(INPUT_OWNER_RVA, 8)
     local owner = slot and read64(slot)
     if not owner or not C.input_owner(owner) then return false, "native input object unavailable" end
-    if M.language == "cn" then
-        local resources, why = active_font_hashes()
-        if not resources then C.set("font", why); return false, why end
-        for name, kind in pairs({font = "font", material = "material", atlas = "texture"}) do
-            local id = call(s3d.IdString64.from_hex, resources[name])
-            if not id or call(s3d.Application.can_get, kind, id) ~= true then
-                C.set("font", "native locale " .. name .. " unavailable")
-                return false, "native locale " .. name .. " unavailable"
-            end
-        end
-        for _, name in ipairs({"set_scalar", "set_vector2", "set_vector4", "set_texture"}) do
-            if not s3d.Material or not C.callable(s3d.Material[name]) then
-                local reason = "font Material." .. name .. " unavailable"
-                C.set("font", reason); return false, reason
-            end
-        end
-        if not C.callable(s3d.Gui.material) then
-            C.set("font", "font material API unavailable"); return false, "font material API unavailable"
-        end
-        C.set("font", "native locale resources available; rendering requires live verification")
+    if debug_font_available() then
+        C.set("font", M.language_status or "system font detection pending; English fallback available")
+    else
+        C.set("font", "menu fonts unavailable"); return false, "menu fonts unavailable"
     end
     return true
 end
 
 local function pick_debug_font()
-    if not s3d or not s3d.Application or not s3d.Application.can_get then return false end
-    local candidates = {"core/performance_hud/debug", "core/editor_slave/gui/arial"}
-    for _, name in ipairs(candidates) do
-        local font = call(s3d.Application.can_get, "font", name)
-        local material = call(s3d.Application.can_get, "material", name)
-        if font and material then GUI.font = name; note("GUI font: " .. name); return true end
-    end
-    return false
+    GUI.font = debug_font_available()
+    if GUI.font then note("GUI font: " .. GUI.font) end
+    return GUI.font ~= nil
 end
 
-local function pick_font()
-    if ui_state.lang == "cn" and not GUI.native_font then
-        local native, reason = active_font_hashes()
-        if native then
-            GUI.font = nil
-            GUI.native_font = native
-            note("GUI native font: " .. native.font .. " material: " .. native.material
-                .. " atlas: " .. native.atlas)
-            return true
+local function pick_font(language)
+    GUI.font, GUI.native_font, GUI.system_font = nil, nil, false
+    local available, why = SF.api_available(s3d)
+    if available then
+        local required = {}
+        for _, values in pairs(MENU_STRINGS) do
+            for _, text in pairs(values) do required[#required + 1] = text end
         end
-        note("GUI native font unavailable: " .. reason)
+        for _, passive in ipairs(PASSIVES) do
+            for column = 2, 4 do required[#required + 1] = passive[column] end
+        end
+        available, why = SF.prepare(required)
     end
-    if GUI.font or GUI.native_font then return true end
+    if available and pick_debug_font() and GUI.font == "core/performance_hud/debug" then
+        GUI.system_font = true
+        ui_state.lang, M.display_language = language, language
+        M.language_status = "system font " .. SF.face .. "; bitmap rendering requires live verification"
+        C.set("font", M.language_status)
+        note(string.format("System font: %s weight=%d glyphs=%d cpu_rgba=%d largest_raster=%d upload_limit=%d",
+            SF.face, SF.weight_for_language(language), SF.count, SF.bytes, SF.largest, SF.max_upload))
+        for _, attempt in ipairs(SF.font_attempts) do note("System font skipped: " .. attempt) end
+        return true
+    end
+    if available then why = "core/performance_hud/debug material unavailable" end
+    ui_state.lang, M.display_language = "en", "en"
+    M.language_status = "system font unavailable: " .. tostring(why) .. "; using English"
+    C.set("font", M.language_status)
+    note(M.language_status)
     return pick_debug_font()
 end
 
@@ -961,10 +1106,9 @@ local function setup_native_font(instance)
     if not ids then return true end
     local ok, reason = pcall(function()
         local make_id = s3d.IdString64.from_hex
-        local material = make_id(ids.material)
-        local ink = assert(s3d.Gui.material(instance, material), "font material unavailable")
+        local ink = assert(s3d.Gui.material(instance, make_id(ids.material)), "font material unavailable")
         local function slot(hash) return make_id(hash .. "00000000") end
-        for _, hash in ipairs({"8035c266", "5e8455fe", "309e7783", "82b803a8"}) do
+        for _, hash in ipairs({"8035c266", "5e8455fe", "309e7783", "82b803a8", "a8ea55ba"}) do
             s3d.Material.set_scalar(ink, slot(hash), 0)
         end
         s3d.Material.set_vector2(ink, slot("e13777ce"), s3d.Vector2(1, -1))
@@ -973,6 +1117,23 @@ local function setup_native_font(instance)
     end)
     if not ok then note("GUI native font setup failed: " .. tostring(reason):sub(1, 180)) end
     return ok
+end
+
+local function configure_menu_font(language)
+    -- Always retry on open or a manual choice. A previous fallback is not a
+    -- saved preference and does not prevent later recovery of Chinese fonts.
+    if not pick_font(language) then return false end
+    if GUI.native_font then
+        for _, layer in ipairs(GUI.layers) do
+            if not setup_native_font(layer.instance) then
+                GUI.native_font = nil
+                ui_state.lang, M.display_language = "en", "en"
+                M.language_status = "Chinese material setup failed; using English"
+                return pick_debug_font()
+            end
+        end
+    end
+    return true
 end
 
 local function loadout_screen_active()
@@ -1016,6 +1177,7 @@ local function scene_allowed(list)
 end
 
 local function menu_open()
+    local open_started_at = SF.clock()
     if READ_ONLY or not C.interfaces(s3d, true) then return false end
     local list = worlds()
     if not list then return false end
@@ -1041,13 +1203,11 @@ local function menu_open()
         log()
         return false
     end
-    local lang = game_language()
-    if ui_state.lang ~= lang then GUI.font, GUI.native_font = nil, nil end
-    ui_state.lang = lang
-    note("Game language: " .. lang)
+    M.language = game_language()
+    note("Game text language: " .. M.language .. "; menu requested: " .. requested_language())
     local main = call(s3d.Application.main_world)
     local host = list[2]
-    if not host or not pick_font() then
+    if not host then
         M.gui_status = "GUI world or font unavailable"
         log()
         return false
@@ -1066,19 +1226,11 @@ local function menu_open()
         end
     end
     if #GUI.layers == 0 then M.gui_status = "create_screen_gui failed"; log(); return false end
-    if GUI.native_font then
-        for _, layer in ipairs(GUI.layers) do
-            if not setup_native_font(layer.instance) then
-                GUI.native_font = nil
-                if not pick_debug_font() then
-                    M.gui_status = "native and fallback fonts unavailable"
-                    release_gui(list)
-                    log()
-                    return false
-                end
-                break
-            end
-        end
+    if not configure_menu_font(requested_language()) then
+        M.gui_status = "menu fonts unavailable"
+        release_gui(list)
+        log()
+        return false
     end
     note(string.format("GUI API types: Vector2=%s Vector3=%s Color=%s rect=%s text=%s",
         type(s3d.Vector2), type(s3d.Vector3), type(s3d.Color),
@@ -1086,6 +1238,7 @@ local function menu_open()
     ui_state.visible = true
     ui_state.capture = nil
     ui_state.hotkey_message = M.hotkey_config_error and "invalid" or "ready"
+    ui_state.language_message = M.language_config_error and "invalid" or nil
     ui_state.missing_frames = 0
     M.visible = true
     M.scene_status = "menu opened: " .. reason .. " (" .. #list .. " worlds)"
@@ -1095,12 +1248,14 @@ local function menu_open()
         .. "; loadout screen: " .. tostring(ui_state.loadout_cursor))
     if s3d.Window and s3d.Window.set_show_cursor then call(s3d.Window.set_show_cursor, true) end
     ui_state.redraw = true
+    note(string.format("menu open setup elapsed_ms=%.3f", SF.clock() - open_started_at))
     note(M.scene_status)
     log()
     return true
 end
 
 local function menu_close()
+    local close_started_at = SF.clock()
     ui_state.actions_allowed = false
     cancel_capture()
     local list = worlds()
@@ -1118,68 +1273,76 @@ local function menu_close()
     ui_state.loadout_cursor = false
     note("cursor after menu: " .. tostring(call(s3d.Window and s3d.Window.show_cursor))
         .. "; kept for loadout: " .. tostring(keep_loadout_cursor))
-    note("menu closed")
+    note(string.format("menu closed elapsed_ms=%.3f", SF.clock() - close_started_at))
     log()
 end
 
 local function redraw()
+    local started_at = SF.clock()
     if #GUI.layers == 0 or not s3d or not s3d.Gui then return end
     clear_gui(true)
     local width, height = call(s3d.Gui.resolution)
     if type(width) ~= "number" or type(height) ~= "number" then return end
     local x = math.floor((width - 680) / 2)
-    local y = math.floor((height - 600) / 2)
-    M.box = {x, y, 680, 600}
+    local y = math.floor((height - 680) / 2)
+    M.box = {x, y, 680, 680}
+    local text = MENU_STRINGS[ui_state.lang]
+    local passive_column = ui_state.lang == "zh_cn" and 3 or ui_state.lang == "zh_tw" and 4 or 2
+    local requested = requested_language()
     local summary = {}
     for _, layer in ipairs(GUI.layers) do
     GUI.instance, GUI.rects, GUI.texts = layer.instance, layer.rects, layer.texts
-    draw_rect(x, y, 680, 600, 8, 15, 23, 240)
-    draw_rect(x + 8, y + 8, 664, 584, 14, 24, 35, 240)
-    local zh = ui_state.lang == "cn" and GUI.native_font ~= nil
-    draw_text(zh and "额外护甲被动" or "EXTRA ARMOR PASSIVE", x + 28, y + 555, 29, 240, 220, 160)
-    local active_name = PASSIVES[1][zh and 3 or 2]
+    draw_rect(x, y, 680, 680, 8, 15, 23, 240)
+    draw_rect(x + 8, y + 8, 664, 664, 14, 24, 35, 240)
+    draw_text(text.title, x + 28, y + 635, 29, 240, 220, 160)
+    local active_name = PASSIVES[1][passive_column]
     for _, entry in ipairs(PASSIVES) do
-        if entry[1] == M.applied then active_name = entry[zh and 3 or 2]; break end
+        if entry[1] == M.applied then active_name = entry[passive_column]; break end
     end
-    local status = M.base and (zh and "已就绪" or "Ready") or (zh and "加载中" or "Loading")
-    if M.phase:find("^apply failed:") then status = zh and "应用失败, 请查看日志" or "Apply failed; check log" end
-    draw_text((zh and "当前: " or "Current: ") .. active_name .. "    " .. status,
-        x + 28, y + 522, 17, 180, 205, 220)
-    draw_text((zh and "打开菜单: " or "MENU KEY: ") .. M.hotkey:upper(), x + 28, y + 472, 20)
-    button(zh and "修改快捷键" or "CHANGE KEY", x + 300, y + 464, 170, 36, {"hotkey"})
-    button(zh and "恢复 F9" or "RESET F9", x + 482, y + 464, 170, 36, {"hotkey_reset"})
-    local messages = {
-        ready = {"Choose F1-F12 as the menu key.", "可设置 F1-F12 单键打开菜单."},
-        waiting = {"Release all F keys first; Esc cancels.", "请先松开所有 F 键; Esc 取消."},
-        capture = {"Press F1-F12 to bind; Esc cancels.", "按 F1-F12 设置; Esc 取消."},
-        multiple = {"Press one F key at a time; release to retry.", "请一次按一个 F 键; 松开后重试."},
-        saved = {"Key saved. Release F keys to continue.", "快捷键已保存. 松开 F 键后继续."},
-        failed = {"Save failed; previous key kept. Check log.", "保存失败, 已保留原快捷键; 请查看日志."},
-        cancelled = {"Key change cancelled.", "已取消修改快捷键."},
-        invalid = {"Invalid settings; using F9. Change key to repair.", "配置无效, 使用 F9; 修改快捷键可重新保存."},
-    }
-    local message = messages[ui_state.hotkey_message] or messages.ready
-    draw_text(message[zh and 2 or 1], x + 28, y + 432, 16, 180, 205, 220)
+    local status = M.base and text.ready or text.loading
+    if M.phase:find("^apply failed:") then status = text.apply_failed end
+    draw_text(text.current .. active_name .. "    " .. status,
+        x + 28, y + 602, 17, 180, 205, 220)
+    draw_text(text.language, x + 28, y + 554, 18)
+    button(text.simplified, x + 174, y + 546, 146, 36, {"language", "zh_cn"}, requested == "zh_cn")
+    button(text.traditional, x + 332, y + 546, 154, 36, {"language", "zh_tw"}, requested == "zh_tw")
+    button(text.english, x + 498, y + 546, 154, 36, {"language", "en"}, requested == "en")
+    local language_message = ui_state.language_message
+    if not language_message then
+        language_message = ui_state.lang ~= requested and "fallback" or M.menu_language and "saved" or "auto"
+    end
+    draw_text(text["language_" .. language_message], x + 28, y + 522, 16, 180, 205, 220)
+    draw_text(text.menu_key .. M.hotkey:upper(), x + 28, y + 472, 20)
+    button(text.change_key, x + 300, y + 464, 170, 36, {"hotkey"})
+    button(text.reset_key, x + 482, y + 464, 170, 36, {"hotkey_reset"})
+    draw_text(text["key_" .. ui_state.hotkey_message] or text.key_ready, x + 28, y + 432, 16, 180, 205, 220)
     local first = (ui_state.page - 1) * 8 + 1
     for row = 0, 7 do
         local index = first + row
         local entry = PASSIVES[index]
         if entry then
-            local label = string.format("%02d  %s", entry[1], zh and entry[3] or entry[2])
+            local label = string.format("%02d  %s", entry[1], entry[passive_column])
             button(label, x + 28, y + 386 - row * 43, 624, 38,
                 {"select", index}, ui_state.highlight == index)
         end
     end
-    button(zh and "上页" or "PREV", x + 28, y + 18, 110, 40, {"prev"})
-    button(zh and "下页" or "NEXT", x + 150, y + 18, 110, 40, {"next"})
-    button(zh and "确认" or "APPLY", x + 395, y + 18, 120, 40, {"apply"})
-    button(zh and "关闭" or "CLOSE", x + 527, y + 18, 125, 40, {"close"})
-    draw_text(string.format(zh and "第 %d / %d 页" or "Page %d / %d", ui_state.page, math.ceil(#PASSIVES / 8)),
+    button(text.prev, x + 28, y + 18, 110, 40, {"prev"})
+    button(text.next, x + 150, y + 18, 110, 40, {"next"})
+    button(text.apply, x + 395, y + 18, 120, 40, {"apply"})
+    button(text.close, x + 527, y + 18, 125, 40, {"close"})
+    draw_text(string.format(text.page, ui_state.page, math.ceil(#PASSIVES / 8)),
         x + 278, y + 28, 18)
     summary[#summary + 1] = string.format("%s rect=%d text=%d", layer.name, #layer.rects, #layer.texts)
     end
     M.gui_status = string.format("drawn %dx%d: %s", width, height, table.concat(summary, "; "))
     C.set("gui", "draw calls succeeded; visual behavior requires live verification")
+    if GUI.system_font then
+        SF.end_render(s3d)
+        local textures, glyph_guis, bitmaps, bytes = SF.stats()
+        note(string.format("System font draw: textures=%d glyph_guis=%d bitmaps=%d active_rgba=%d cpu_rgba=%d created=%d removed=%d reused_labels=%d draw_ms=%.3f",
+            textures, glyph_guis, bitmaps, bytes, SF.bytes, SF.bitmap_created, SF.bitmap_destroyed, SF.label_reused,
+            SF.clock() - started_at))
+    end
     note(M.gui_status)
     log()
     ui_state.redraw = false
@@ -1189,8 +1352,8 @@ local function action(which)
     local operation, arg = which[1], which[2]
     if operation ~= "close" and (not ui_state.actions_allowed or ui_state.capture) then return end
     if operation == "select" then ui_state.highlight = arg; ui_state.redraw = true
-    elseif operation == "prev" then ui_state.page = math.max(1, ui_state.page - 1); ui_state.redraw = true
-    elseif operation == "next" then ui_state.page = math.min(math.ceil(#PASSIVES / 8), ui_state.page + 1); ui_state.redraw = true
+    elseif operation == "prev" then ui_state.page = (ui_state.page - 2) % math.ceil(#PASSIVES / 8) + 1; ui_state.redraw = true
+    elseif operation == "next" then ui_state.page = ui_state.page % math.ceil(#PASSIVES / 8) + 1; ui_state.redraw = true
     elseif operation == "close" then menu_close()
     elseif operation == "hotkey" then
         ui_state.capture = "release_before"
@@ -1198,6 +1361,23 @@ local function action(which)
         M.hotkey_status = "capturing F1-F12"
         log()
     elseif operation == "hotkey_reset" then save_hotkey("f9")
+    elseif operation == "language" then
+        local ok, reason = write_settings(M.hotkey, arg)
+        if ok then
+            M.menu_language, M.language_config_error, M.hotkey_config_error = arg, nil, nil
+            ui_state.language_message = nil
+            if ui_state.hotkey_message == "invalid" then ui_state.hotkey_message = "ready" end
+            note("menu language saved: " .. arg)
+            if not configure_menu_font(arg) then
+                M.gui_status = "menu fonts unavailable after language change"
+                menu_close()
+            end
+        else
+            ui_state.language_message = "failed"
+            note("menu language save failed: " .. reason)
+        end
+        ui_state.redraw = true
+        log()
     elseif operation == "apply" then
         local value = PASSIVES[ui_state.highlight][1]
         local ok, why = apply_passive(value, true)
@@ -1306,9 +1486,10 @@ end
 M.selected = read_config()
 M.language = game_language()
 note("saved passive ID " .. M.selected)
-M.hotkey, M.hotkey_config_error = read_hotkey()
+M.hotkey, M.menu_language, M.hotkey_config_error, M.language_config_error = read_settings()
 M.hotkey_status = M.hotkey_config_error or "loaded " .. M.hotkey:upper()
 if M.hotkey_config_error then note("settings fallback to F9: " .. M.hotkey_config_error) end
+if M.language_config_error then note("settings fallback to English: " .. M.language_config_error) end
 C.interfaces(s3d)
 C.game()
 update_time()
@@ -1322,6 +1503,11 @@ local function tick()
         if ui_state.visible then menu_close() end
         flush_log(false)
         return
+    end
+    if not font_packages_closing and poll_font_packages() and ui_state.visible
+        and ui_state.lang ~= requested_language() then
+        if configure_menu_font(requested_language()) then ui_state.redraw = true
+        else menu_close() end
     end
     if M.frame >= 120 and not M.base and M.frame % 3 == 0 then locate_step() end
     if READ_ONLY then
@@ -1445,6 +1631,7 @@ update = function(...)
         local ok, why = pcall(finish_gui_cleanup)
         if not ok then fail_update("GUI cleanup error: ", why) end
     end
+    finish_font_package_cleanup()
     if ui_state.visible then
         local ok, consumed
         if C.interfaces(s3d, true) then ok, consumed = pcall(consume_native_menu) end
@@ -1460,6 +1647,8 @@ end
 local prior_shutdown = rawget(_G, "shutdown")
 shutdown = function(...)
     if ui_state.visible then menu_close() end
+    font_packages_closing = true
+    finish_font_package_cleanup()
     note("clean shutdown")
     log(true)
     if prior_shutdown then return prior_shutdown(...) end

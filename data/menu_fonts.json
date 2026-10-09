@@ -1,0 +1,62 @@
+{
+  "zh_cn": {
+    "package": "09caa46bc556e38f",
+    "verified_characters": " %,-./0123456789:;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz一上下不个中为主伤伺位佑体使供侦保修健充先关兵内减出击创剂前力加动助势包化单原取变可后和器坚型垫壮复外失如字存察导就工已应开弹强当志快急恢戏成所手打护拔择按捷掷改效救文料新无日易显有服松枪查格次毫民氧沙消游滤漠潜炸燃爆用甲电畏留看石确磐示神移程突章第简管素繁级继绪续缓缩置者肩肾能腺腿自英药菜蓄补衬被言认设试语请败跟路踪载辅过迹选配重钝键闭防除随隐集震韧页额颤高（）",
+    "resources": [
+      {
+        "font": "fbb35bee675f2295",
+        "material": "b0496b27039825bd",
+        "sha256": "417c52c720bce0eb9757d1b63d9e3baf6ddd4db4490ec3be7ebab534381bb77d",
+        "glyph_count": 2951,
+        "atlas": "f14daed0a7d38271",
+        "atlas_main_sha256": "c2ef19f2ec3a440ceba0b1d48d49c1a66796b844e5ae6eeccca54d9b627a01bb",
+        "atlas_gpu_sha256": "d4833f3c8f447eaafefd0bc2098df14e1b188f0017e9939d95cc6e7ea68c05cf",
+        "material_source": "e1ad65fd46c0314d",
+        "material_sha256": "a36a5f417988eebcd5a7de989d936d47999ed2aa5f72b532be03c64d935a1a4d",
+        "material_source_sha256": "a193345da87a2424f262e150ead84c80f8ccd336f92a8461b4ea6fb14bb5d118"
+      },
+      {
+        "font": "e01b1c60bb279a7c",
+        "material": "b0496b27039825bd",
+        "sha256": "ce32d30bf5fef8a74a926c353e3d06b53c51182a055067760dd020ce7302cac2",
+        "glyph_count": 2951,
+        "atlas": "1a87fa21dafbd90e",
+        "atlas_main_sha256": "c2ef19f2ec3a440ceba0b1d48d49c1a66796b844e5ae6eeccca54d9b627a01bb",
+        "atlas_gpu_sha256": "266400d2523d5fe9bb2543755ebea45889822681c9330d7cb42db5130e7dd76e",
+        "material_source": "e1ad65fd46c0314d",
+        "material_sha256": "a36a5f417988eebcd5a7de989d936d47999ed2aa5f72b532be03c64d935a1a4d",
+        "material_source_sha256": "a193345da87a2424f262e150ead84c80f8ccd336f92a8461b4ea6fb14bb5d118"
+      }
+    ]
+  },
+  "zh_tw": {
+    "package": "c0b7644cc5c4aaa8",
+    "verified_characters": " %,-./0123456789:;ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz一上下不中主之伺使保修個偵備優儲充先入兵前劑助動化危原取可合啟單器圍型堅填塵墊外失套如字存守完定害察就屈峰巔工已強彈後復快恢態應懼戲所手按捷擇擊擲改攻放效敗整文新易暴有服查槍次毅民氣氧沙消準濾炸無燃物王用甲留畢療盪目看石確磐示神程第管簡素組緒線緩繁繼續者肩能腎腺腿自英藥衝被補襯解言記設試認語請護質跟跡載輔進遊過適選醫重鈍錄鍵閉開關防除階隨隱電震頁額顫顯體",
+    "resources": [
+      {
+        "font": "3da89f2c15b53d65",
+        "material": "702bd6ee6303dcca",
+        "sha256": "345564e366e9c99d710bb69ee51299f0d1c0f56f13c2aa4532831b6d94f261fb",
+        "glyph_count": 2958,
+        "atlas": "86667f650dca00f9",
+        "atlas_main_sha256": "c2ef19f2ec3a440ceba0b1d48d49c1a66796b844e5ae6eeccca54d9b627a01bb",
+        "atlas_gpu_sha256": "d81f261fe0cd72db122993e388c05d44abbdace4aa57aee8cbbda0cc32dec7d4",
+        "material_source": "66844256cc02622c",
+        "material_sha256": "db72e3fe0179151d747fb74b898d9ed4b2ae5a7ffc1f0cdd6eb253dd11883066",
+        "material_source_sha256": "58c25bdbc5ac5c762558db218e1c9a006a67d2185677fae9d6f9cbb540977be3"
+      },
+      {
+        "font": "7c63fea1f706eec4",
+        "material": "702bd6ee6303dcca",
+        "sha256": "bcd14ccc53856169378dbad24da2706205e0cbdacd4f3358fa2d40168e736fa8",
+        "glyph_count": 2958,
+        "atlas": "3454c1d97f395663",
+        "atlas_main_sha256": "560c804a47e79a9465b54b06f6b347853f1461d848c0817f4d3627464686f9b1",
+        "atlas_gpu_sha256": "d7a3f3104469c55d766c705de05f1b9f253b9d58c5bba6e2ce0093c26665335c",
+        "material_source": "66844256cc02622c",
+        "material_sha256": "db72e3fe0179151d747fb74b898d9ed4b2ae5a7ffc1f0cdd6eb253dd11883066",
+        "material_source_sha256": "58c25bdbc5ac5c762558db218e1c9a006a67d2185677fae9d6f9cbb540977be3"
+      }
+    ]
+  }
+}

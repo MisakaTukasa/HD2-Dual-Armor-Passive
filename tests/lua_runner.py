@@ -73,8 +73,14 @@ def run(case: str, settings: str | None = None, source: bytes | None = None, fps
 
     try:
         lua.luaL_openlibs(state)
-        set_string("MOD_SOURCE", source if source is not None else render_source(
-            "compatibility" if case.startswith("probe_") else "release"))
+        mod_source = source if source is not None else render_source(
+            "compatibility" if case.startswith("probe_") else "release")
+        if case == "pagination_single":
+            start = mod_source.index(b"local PASSIVES = {\n")
+            end = mod_source.index(b"\n}", start) + 2
+            rows = mod_source[start:end].splitlines()
+            mod_source = mod_source[:start] + b"\n".join(rows[:9] + [b"}"]) + mod_source[end:]
+        set_string("MOD_SOURCE", mod_source)
         set_string("CASE", case.encode())
         set_string("MEASURE_FPS", str(fps).encode())
         if settings is not None:
@@ -89,6 +95,7 @@ def run(case: str, settings: str | None = None, source: bytes | None = None, fps
                    f"ids={{{ids}}}}}")
         set_string("FIXTURE_SOURCE", fixture.encode())
         body = harness if harness is not None else (ROOT / "tests/offline_runtime.lua").read_bytes()
+        body = body.replace(b"-- @SYSTEM_FONT_MOCK@", (ROOT / "tests/offline_system_font.lua").read_bytes())
         result = lua.luaL_loadbuffer(state, body, len(body), b"@tests/offline_runtime.lua")
         if result == 0:
             result = lua.lua_pcall(state, 0, 0, 0)

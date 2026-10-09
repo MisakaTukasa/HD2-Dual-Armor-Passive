@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -13,6 +14,7 @@ import zipfile
 
 ARCHIVE = "9ba626afa44a3aa3.patch_0"
 LUA_TYPE = 0xA14E8DFA2CD117E2
+PACKAGE_TYPE = 0xAD9C6D9ED1E5E77A
 PACKAGES = {
     "probe": {
         "resource": "mods/hd2/dual_armor_probe",
@@ -36,7 +38,7 @@ PACKAGES = {
         "source": "mod.lua",
         "filename": "HD2-Dual-Armor-Passive.zip",
         "title": "HD2 Dual Armor Passive",
-        "description": "v1.1.0 dual armor passive menu with data compatibility checks.",
+        "description": "v1.2.0 dual armor passive menu with saved language and key settings.",
     },
     "compatibility": {
         "resource": "mods/hd2/dual_armor_compatibility_probe",
@@ -66,7 +68,7 @@ def resource_hash(name: str) -> int:
     return value ^ (value >> 47)
 
 
-def archive_for(name: str, source: bytes) -> bytes:
+def archive_for(name: str, source: bytes, extra_resources: tuple = ()) -> bytes:
     if not re.fullmatch(r"mods/[A-Za-z0-9_]+/[A-Za-z0-9_]+", name):
         raise ValueError("Invalid addon resource name")
     declaration = f"-- HD2-Addon: {name}\n".encode()
@@ -79,19 +81,98 @@ def archive_for(name: str, source: bytes) -> bytes:
     if body.startswith(b"\xef\xbb\xbf") or b"\0" in body:
         raise ValueError("Addon must be plain UTF-8 Lua")
     body.decode("utf-8")
-    payload = struct.pack("<II", len(body), 2) + body
-    offset = 192
-    data = bytearray(offset)
-    data.extend(payload)
-    data.extend(b"\0" * (-len(data) % 16))
-    header = struct.pack("<III20sQQ24s", 0xF0000011, 1, 1, b"", len(data), 0, b"")
-    types = struct.pack("<IIQIIII", 0, 0, LUA_TYPE, 1, 0, 16, 16)
-    entry = struct.pack(
-        "<7Q6I", resource_hash(name), LUA_TYPE, offset, 0, 0, 0, 0,
-        len(payload), 0, 0, 16, 16, 0,
-    )
-    data[: len(header + types + entry)] = header + types + entry
+    resources = [(resource_hash(name), LUA_TYPE, struct.pack("<II", len(body), 2) + body)]
+    resources.extend(extra_resources)
+    keys = [(name_id, type_id) for name_id, type_id, _ in resources]
+    if len(keys) != len(set(keys)):
+        raise ValueError("Duplicate archive resource")
+    if extra_resources:
+        return resource_archive(tuple((n, t, (p, b"", b"")) for n, t, p in resources))[0]
+    type_ids = sorted({type_id for _, type_id, _ in resources})
+    table_end = 72 + 32 * len(type_ids) + 80 * len(resources)
+    data = bytearray(table_end + (-table_end % 16))
+    entries = []
+    for index, (name_id, type_id, payload) in enumerate(resources):
+        offset = len(data)
+        data.extend(payload)
+        data.extend(b"\0" * (-len(data) % 16))
+        entries.append(struct.pack("<7Q6I", name_id, type_id, offset, 0, 0, 0, 0,
+                                   len(payload), 0, 0, 16, 16, index))
+    header = struct.pack("<III20sQQ24s", 0xF0000011, len(type_ids), len(resources), b"", len(data), 0, b"")
+    types = b"".join(struct.pack("<IIQIIII", 0, 0, type_id,
+                                 sum(t == type_id for _, t, _ in resources), 0, 16, 16)
+                     for type_id in type_ids)
+    tables = header + types + b"".join(entries)
+    data[:len(tables)] = tables
     return bytes(data)
+
+
+def resource_archive(resources: tuple) -> tuple[bytes, bytes, bytes]:
+    """Encode native resources with independent main, stream and GPU buffers."""
+    if not resources:
+        raise ValueError("Empty resource archive")
+    keys = [(name, kind) for name, kind, _ in resources]
+    if len(keys) != len(set(keys)):
+        raise ValueError("Duplicate archive resource")
+    resources = tuple(sorted(resources, key=lambda r: (r[1], r[0])))
+    types = sorted({kind for _, kind, _ in resources})
+    table_end = 72 + 32 * len(types) + 80 * len(resources)
+    buffers = [bytearray(table_end + (-table_end % 16)), bytearray(), bytearray()]
+    entries = []
+    main_memory = gpu_memory = 0
+    for index, (name, kind, parts) in enumerate(resources):
+        if len(parts) != 3 or not parts[0] or any(not isinstance(p, bytes) for p in parts):
+            raise ValueError("Invalid native resource parts")
+        offsets = []
+        for i, (buffer, part) in enumerate(zip(buffers, parts)):
+            alignment = 256 if i == 2 else 16
+            buffer.extend(b"\0" * (-len(buffer) % alignment))
+            offsets.append(len(buffer))
+            buffer.extend(part)
+        entries.append(struct.pack("<7Q6I", name, kind, *offsets, main_memory, gpu_memory,
+                                   *(len(p) for p in parts), 16, 64, index))
+        main_memory += len(parts[0]) + (-len(parts[0]) % 256)
+        gpu_memory += len(parts[2]) + (-len(parts[2]) % 256)
+    buffers[2].extend(b"\0" * (-len(buffers[2]) % 256))
+    header = struct.pack("<III20sQQ24s", 0xF0000011, len(types), len(resources), b"",
+                         main_memory, gpu_memory, b"")
+    type_table = b"".join(struct.pack("<IIQIIII", 0, 0, kind,
+                                      sum(t == kind for _, t, _ in resources), 0, 16, 64)
+                          for kind in types)
+    tables = header + type_table + b"".join(entries)
+    buffers[0][:len(tables)] = tables
+    return tuple(bytes(b) for b in buffers)
+
+
+def font_asset_resources(fonts: dict, asset_dir: Path) -> tuple:
+    """Read pinned primary assets from a local extraction, never from the game process."""
+    resources = []
+    for locale in fonts.values():
+        primary = locale["resources"][0]
+        for field, kind, checks in (
+            ("font", "font", ("sha256", None, None)),
+            ("material", "material", ("material_sha256", None, None)),
+            ("atlas", "texture", ("atlas_main_sha256", None, "atlas_gpu_sha256")),
+        ):
+            name = primary[field]
+            parts = []
+            for suffix, checksum in zip(("main", "stream", "gpu"), checks):
+                if checksum is None:
+                    parts.append(b"")
+                    continue
+                path = asset_dir / f"{name}.{kind}.{suffix}"
+                if not path.is_file():
+                    raise ValueError(f"Missing extracted menu font asset: {path}")
+                if path.stat().st_size > 32 * 1024 * 1024:
+                    raise ValueError("Extracted menu font asset exceeds size limit")
+                payload = path.read_bytes()
+                if hashlib.sha256(payload).hexdigest() != primary.get(checksum):
+                    raise ValueError(f"Extracted menu font asset checksum mismatch: {path.name}")
+                parts.append(payload)
+            resources.append((int(name, 16), resource_hash(kind), tuple(parts)))
+    if len({(name, kind) for name, kind, _ in resources}) != len(resources):
+        raise ValueError("Duplicate extracted menu font asset")
+    return tuple(resources)
 
 
 def replace_once(source: bytes, marker: bytes, replacement: bytes) -> bytes:
@@ -157,6 +238,7 @@ def render_source(kind: str = "release") -> bytes:
                             (b"true" if kind == "compatibility" else b"false"))
         body = replace_once(body, b"-- @COMPATIBILITY@", (root / "src/compatibility.lua").read_bytes())
         body = replace_once(body, b"-- @SEARCH@", (root / "src/search.lua").read_bytes())
+        body = replace_once(body, b"-- @SYSTEM_FONT@", (root / "src/system_font.lua").read_bytes())
         if kind == "compatibility":
             body = replace_once(body, b"-- HD2-Addon: mods/hd2/dual_armor_passive\n",
                                 ("-- HD2-Addon: " + package["resource"] + "\n").encode())
@@ -178,14 +260,109 @@ def render_source(kind: str = "release") -> bytes:
         ids = [entry["id"] for entry in passives]
         if len(ids) != 32 or ids[0] != 0 or len(ids) != len(set(ids)):
             raise ValueError("Expected 31 distinct armor passives plus None")
+        strings = json.loads((root / "data/menu_strings.json").read_text(encoding="utf-8"))
+        fonts = json.loads((root / "data/menu_fonts.json").read_text(encoding="utf-8"))
+        validated_locales(passives, strings, fonts)
         passive_rows = ",\n".join(
             "    {" + str(entry["id"]) + ", "
             + json.dumps(entry["en"], ensure_ascii=False) + ", "
-            + json.dumps(entry["zh"], ensure_ascii=False) + "}"
+            + json.dumps(entry["zh"], ensure_ascii=False) + ", "
+            + json.dumps(entry["zh_tw"], ensure_ascii=False) + "}"
             for entry in passives
         )
         body = replace_once(body, b"-- @PASSIVES@", ("local PASSIVES = {\n" + passive_rows + "\n}").encode("utf-8"))
+        locale_rows = []
+        for locale, values in strings.items():
+            rows = ",\n".join("        " + key + " = " + json.dumps(value, ensure_ascii=False)
+                              for key, value in values.items())
+            locale_rows.append(f"    {locale} = {{\n{rows}\n    }}")
+        font_rows = []
+        for locale, values in fonts.items():
+            rows = ", ".join('{font = "' + resource["font"] + '", material = "'
+                             + resource["material"] + '", atlas = "' + resource["atlas"] + '"}'
+                             for resource in values["resources"])
+            font_rows.append(f'    {locale} = {{package = "{values["package"]}", {rows}}}')
+        locales = "local MENU_STRINGS = {\n" + ",\n".join(locale_rows) + "\n}\n"
+        locales += "local MENU_FONTS = {\n" + ",\n".join(font_rows) + "\n}"
+        body = replace_once(body, b"-- @MENU_LOCALES@", locales.encode("utf-8"))
     return body
+
+
+def validated_locales(passives: list[dict], strings: dict, fonts: dict) -> None:
+    if set(strings) != {"en", "zh_cn", "zh_tw"} or set(fonts) != {"zh_cn", "zh_tw"}:
+        raise ValueError("Expected English, Simplified and Traditional menu locales")
+    keys = set(strings["en"])
+    for locale, passive_key in (("en", "en"), ("zh_cn", "zh"), ("zh_tw", "zh_tw")):
+        if not keys or set(strings[locale]) != keys or any(not re.fullmatch(r"[a-z_]+", k) for k in keys):
+            raise ValueError(f"Incomplete menu strings: {locale}")
+        values = list(strings[locale].values()) + [entry.get(passive_key) for entry in passives]
+        if any(not isinstance(value, str) or not value.strip() or "\0" in value or "\r" in value for value in values):
+            raise ValueError(f"Missing or invalid localized text: {locale}")
+        if strings[locale]["page"].count("%d") != 2:
+            raise ValueError(f"Invalid page format: {locale}")
+        if locale != "en":
+            if set("".join(values)) - set(fonts[locale]["verified_characters"]):
+                raise ValueError(f"Menu characters lack verified font coverage: {locale}")
+            resources = fonts[locale]["resources"]
+            if (not re.fullmatch(r"[0-9a-f]{16}", fonts[locale].get("package", ""))
+                    or not resources or any(not re.fullmatch(r"[0-9a-f]{16}", resource.get(key, ""))
+                                    for resource in resources for key in ("font", "material", "atlas"))):
+                raise ValueError(f"Invalid menu font resources: {locale}")
+
+
+def font_package_resources(snapshot: dict, fonts: dict) -> tuple:
+    """Extend native localized font manifests while preserving their original dependencies."""
+    def pairs(items: list[dict]) -> list[tuple[int, int]]:
+        if not isinstance(items, list) or not items:
+            raise ValueError("Invalid font package dependencies")
+        rows = []
+        for item in items:
+            if not isinstance(item, dict) or any(not re.fullmatch(r"[0-9a-f]{16}", item.get(k, ""))
+                                                 for k in ("type", "name")):
+                raise ValueError("Invalid font package dependency hash")
+            rows.append((int(item["type"], 16), int(item["name"], 16)))
+        if len(rows) != len(set(rows)):
+            raise ValueError("Duplicate font package dependency")
+        return rows
+
+    required = set(pairs(snapshot["required_resources"]))
+    kinds = {"font": resource_hash("font"), "material": resource_hash("material"),
+             "atlas": resource_hash("texture")}
+    if any(kind not in kinds.values() for kind, _ in required):
+        raise ValueError("Unexpected menu font dependency type")
+    for locale in fonts.values():
+        for resource in locale["resources"][:1]:
+            if any((kind, int(resource[key], 16)) not in required for key, kind in kinds.items()):
+                raise ValueError("Missing menu font dependency")
+        for resource in locale["resources"][1:]:
+            if any((kinds[key], int(resource[key], 16)) in required for key in ("font", "atlas")):
+                raise ValueError("Backup menu fonts must not be preloaded")
+    packages = snapshot["packages"]
+    if not isinstance(packages, list) or not 1 <= len(packages) <= 16:
+        raise ValueError("Invalid font package list")
+    result, names = [], set()
+    for package in packages:
+        name = package.get("name", "")
+        if not re.fullmatch(r"[0-9a-f]{16}", name) or name in names:
+            raise ValueError("Invalid or duplicate font package name")
+        names.add(name)
+        original = pairs(package["items"])
+        header_hex = package.get("header_hex", "")
+        if not re.fullmatch(r"[0-9a-f]{32}", header_hex) or len(original) > 64:
+            raise ValueError("Invalid localized font package header")
+        header = bytes.fromhex(header_hex)
+        if struct.unpack("<4I", header) != (1, 0, len(original), 0):
+            raise ValueError("Unsupported localized font package header")
+        original_bytes = header + b"".join(struct.pack("<QQ", *item) for item in original)
+        if hashlib.sha256(original_bytes).hexdigest() != package.get("sha256"):
+            raise ValueError("Native font package snapshot checksum mismatch")
+        merged = sorted(set(original) | required)
+        payload = header[:8] + struct.pack("<I", len(merged)) + header[12:]
+        payload += b"".join(struct.pack("<QQ", *item) for item in merged)
+        result.append((int(name, 16), PACKAGE_TYPE, payload))
+    if any(locale["package"] not in names for locale in fonts.values()):
+        raise ValueError("Missing localized Chinese font package")
+    return tuple(result)
 
 
 def build(output: Path, kind: str = "probe") -> Path:

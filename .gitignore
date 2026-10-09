@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 /docs/
 /dist/*.zip
+/dist/menu-font-assets/

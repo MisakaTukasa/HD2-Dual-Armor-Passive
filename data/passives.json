@@ -2,161 +2,193 @@
   {
     "id": 0,
     "en": "None",
-    "zh": "无额外被动"
+    "zh": "无额外被动",
+    "zh_tw": "無額外被動"
   },
   {
     "id": 1,
     "en": "Extra Padding",
-    "zh": "额外垫料"
+    "zh": "额外垫料",
+    "zh_tw": "額外填充"
   },
   {
     "id": 2,
     "en": "Scout",
-    "zh": "侦察"
+    "zh": "侦察",
+    "zh_tw": "偵察兵"
   },
   {
     "id": 3,
     "en": "Fortified",
-    "zh": "强化"
+    "zh": "强化",
+    "zh_tw": "強化"
   },
   {
     "id": 5,
     "en": "Electrical Conduit",
-    "zh": "电路导管"
+    "zh": "电路导管",
+    "zh_tw": "電氣管線"
   },
   {
     "id": 6,
     "en": "Engineering Kit",
-    "zh": "工程包"
+    "zh": "工程包",
+    "zh_tw": "工程套組"
   },
   {
     "id": 7,
     "en": "Med-Kit",
-    "zh": "急救包"
+    "zh": "急救包",
+    "zh_tw": "醫療套組"
   },
   {
     "id": 8,
     "en": "Servo-Assisted",
-    "zh": "伺服辅助"
+    "zh": "伺服辅助",
+    "zh_tw": "伺服輔助"
   },
   {
     "id": 9,
     "en": "Democracy Protects",
-    "zh": "民主护佑"
+    "zh": "民主护佑",
+    "zh_tw": "民主守護者"
   },
   {
     "id": 10,
     "en": "Reinforced Epaulettes",
-    "zh": "强化肩章"
+    "zh": "强化肩章",
+    "zh_tw": "強化護肩"
   },
   {
     "id": 11,
     "en": "Inflammable",
-    "zh": "易燃易爆"
+    "zh": "易燃易爆",
+    "zh_tw": "易燃物"
   },
   {
     "id": 12,
     "en": "Peak Physique",
-    "zh": "健壮体格"
+    "zh": "健壮体格",
+    "zh_tw": "巔峰體態"
   },
   {
     "id": 13,
     "en": "Advanced Filtration",
-    "zh": "高级过滤能力"
+    "zh": "高级过滤能力",
+    "zh_tw": "進階過濾"
   },
   {
     "id": 14,
     "en": "Unflinching",
-    "zh": "毫不畏缩"
+    "zh": "毫不畏缩",
+    "zh_tw": "無懼"
   },
   {
     "id": 15,
     "en": "Acclimated",
-    "zh": "应变自如"
+    "zh": "应变自如",
+    "zh_tw": "適應自如"
   },
   {
     "id": 16,
     "en": "Siege-Ready",
-    "zh": "蓄势出击"
+    "zh": "蓄势出击",
+    "zh_tw": "圍攻準備完畢"
   },
   {
     "id": 17,
     "en": "Integrated Explosives",
-    "zh": "集成炸药"
+    "zh": "集成炸药",
+    "zh_tw": "整合型炸藥"
   },
   {
     "id": 18,
     "en": "Gunslinger",
-    "zh": "神枪手"
+    "zh": "神枪手",
+    "zh_tw": "神槍手"
   },
   {
     "id": 19,
     "en": "Adreno-Defibrillator",
-    "zh": "肾上腺素除颤器"
+    "zh": "肾上腺素除颤器",
+    "zh_tw": "腎上腺素除顫器"
   },
   {
     "id": 20,
     "en": "Ballistic Padding",
-    "zh": "防弹内衬"
+    "zh": "防弹内衬",
+    "zh_tw": "防彈襯墊"
   },
   {
     "id": 21,
     "en": "Desert Stormer",
-    "zh": "沙漠突击者"
+    "zh": "沙漠突击者",
+    "zh_tw": "沙塵暴之王"
   },
   {
     "id": 31,
     "en": "Feet First",
-    "zh": "护腿为上"
+    "zh": "护腿为上",
+    "zh_tw": "護腿優先"
   },
   {
     "id": 32,
     "en": "Reduced Signature",
-    "zh": "隐迹潜踪"
+    "zh": "隐迹潜踪",
+    "zh_tw": "隱跡"
   },
   {
     "id": 33,
     "en": "Rock-Solid",
-    "zh": "坚如磐石"
+    "zh": "坚如磐石",
+    "zh_tw": "堅如磐石"
   },
   {
     "id": 34,
     "en": "Supplemental Adrenaline",
-    "zh": "肾上腺素补充剂"
+    "zh": "肾上腺素补充剂",
+    "zh_tw": "腎上腺素補劑"
   },
   {
     "id": 35,
     "en": "Concussive Padding, Reinforced",
-    "zh": "防震内衬（强化型）"
+    "zh": "防震内衬（强化型）",
+    "zh_tw": "強化防震盪襯墊"
   },
   {
     "id": 36,
     "en": "Concussive Padding, Grenadier",
-    "zh": "防震内衬（掷弹兵型）"
+    "zh": "防震内衬（掷弹兵型）",
+    "zh_tw": "擲彈兵防震盪襯墊"
   },
   {
     "id": 37,
     "en": "Concussive Padding, Hazmat",
-    "zh": "防震内衬（防化型）"
+    "zh": "防震内衬（防化型）",
+    "zh_tw": "危害物質防震盪襯墊"
   },
   {
     "id": 38,
     "en": "Oxygenator",
-    "zh": "供氧器"
+    "zh": "供氧器",
+    "zh_tw": "氧合器"
   },
   {
     "id": 39,
     "en": "Kinetic Displacement Mitigation",
-    "zh": "动能位移减缓"
+    "zh": "动能位移减缓",
+    "zh_tw": "動能緩衝"
   },
   {
     "id": 40,
     "en": "Blunt-Force Mitigation",
-    "zh": "钝击创伤缓和"
+    "zh": "钝击创伤缓和",
+    "zh_tw": "鈍擊緩解"
   },
   {
     "id": 41,
     "en": "True Grit",
-    "zh": "坚韧不拔"
+    "zh": "坚韧不拔",
+    "zh_tw": "堅毅不屈"
   }
 ]

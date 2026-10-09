@@ -50,6 +50,54 @@ class RuntimeTests(unittest.TestCase):
             with self.subTest(case=case):
                 self.run_case(case)
 
+    def test_menu_language_auto_and_saved_preferences(self):
+        for case in ("language_auto_cn", "language_auto_tw", "language_auto_en", "language_auto_unknown"):
+            with self.subTest(case=case):
+                self.run_case(case)
+                self.run_case(case, "settings_version=1\nmenu_hotkey=f10\n")
+        for locale in ("en", "zh_cn", "zh_tw"):
+            settings = f"settings_version=1\nmenu_hotkey=f10\nmenu_language={locale}\n"
+            for case in ("language_reload", "language_reload_en_game"):
+                with self.subTest(case=case, locale=locale):
+                    self.run_case(case, settings)
+
+    def test_menu_language_config_fields_are_independent(self):
+        for locale in ("unknown", "cn", "", "zh-tw"):
+            with self.subTest(locale=locale):
+                self.run_case("language_invalid", f"settings_version=1\nmenu_hotkey=f10\nmenu_language={locale}\n")
+        self.run_case("language_duplicate", "settings_version=1\nmenu_hotkey=f10\nmenu_language=zh_cn\nmenu_language=zh_tw\n")
+        self.run_case("language_key_invalid", "settings_version=1\nmenu_hotkey=ctrl+f10\nmenu_language=zh_tw\n")
+        self.run_case("language_key_invalid", "settings_version=1\nmenu_hotkey=f10\nmenu_hotkey=f11\nmenu_language=zh_tw\n")
+        self.run_case("language_reload", "settings_version=1\nmenu_hotkey=f10\nmenu_language= ZH_TW \n")
+
+    def test_menu_language_switching_preserves_menu_state(self):
+        for case in ("language_click", "language_save_cycle", "language_capture_block", "language_scene_block",
+                     "language_focus_block"):
+            with self.subTest(case=case):
+                self.run_case(case)
+        result = self.run_case("language_save_cycle")
+        self.run_case("language_reload_en_game", result["settings"])
+
+    def test_menu_language_save_failure_is_atomic(self):
+        for failure in ("open", "write", "close", "replace"):
+            with self.subTest(failure=failure):
+                self.run_case("language_save_failure_" + failure,
+                              "settings_version=1\nmenu_hotkey=f10\nmenu_language=en\n")
+
+    def test_menu_language_font_fallback_and_recovery(self):
+        for failure in ("resources", "api"):
+            with self.subTest(failure=failure):
+                self.run_case("language_font_" + failure,
+                              "settings_version=1\nmenu_hotkey=f9\nmenu_language=zh_cn\n")
+        for case in ("language_font_choose", "language_all_fonts_lost"):
+            with self.subTest(case=case):
+                self.run_case(case)
+
+    def test_pagination_wraps_without_changing_selection(self):
+        for case in ("pagination_keyboard", "pagination_mouse", "pagination_single"):
+            with self.subTest(case=case):
+                self.run_case(case)
+
     def test_memory_transactions(self):
         for case in ("apply_success", "apply_clear", "reject_kit", "reject_type", "reject_passive",
                      "reject_short", "reject_header", "reject_page", "reject_before_write",

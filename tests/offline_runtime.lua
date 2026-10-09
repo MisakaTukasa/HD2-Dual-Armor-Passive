@@ -176,7 +176,8 @@ local function fake_file(path, mode, kind)
 end
 os.getenv = function(name)
     if name == "LOCALAPPDATA" then return "V:/offline/local" end
-    if name == "APPDATA" and (CASE == "zh_ui" or CASE == "font_fallback" or CASE:find("^compat_font_")) then
+    if name == "APPDATA" and (CASE == "zh_ui" or CASE == "font_fallback" or CASE:find("^compat_font_")
+        or CASE:find("^language_")) then
         return "V:/offline/roaming"
     end
 end
@@ -192,6 +193,13 @@ io.open = function(path, mode)
     return fake_file(path, mode, kind)
 end
 ctx.files["V:/offline/roaming/Arrowhead/Helldivers2/saves/offline_user_settings.config"] = 'language = "cn"\n'
+local game_config = "V:/offline/roaming/Arrowhead/Helldivers2/saves/offline_user_settings.config"
+if CASE:find("^language_") then ctx.files[game_config] = 'vo_language = "us"\nlanguage = "cn"\nplatform_language = "cn"\n' end
+if CASE == "language_auto_tw" then ctx.files[game_config] = 'language = "tc"\nvo_language = "us"\n' end
+if CASE == "language_auto_unknown" then ctx.files[game_config] = 'language = "jp"\nvo_language = "cn"\n' end
+if CASE == "language_reload_en_game" or CASE == "language_auto_en" then
+    ctx.files[game_config] = 'vo_language = "cn"\nlanguage = "us"\nplatform_language = "cn"\n'
+end
 local kernel = {}
 function kernel.GetCurrentProcess() return real_cast("void *", -1) end
 function kernel.GetCurrentProcessId() return 4242 end
@@ -322,6 +330,7 @@ function user.GetAsyncKeyState(code)
     return ctx.down[code] and -32768 or 0
 end
 ffi.load = function(name)
+    if name == "gdi32" then return real_load(name) end
     if name == "ucrtbase" then
         ctx.crt_loads = (ctx.crt_loads or 0) + 1
         if CASE == "scan_library_missing" then error("injected UCRT unavailable") end
@@ -366,6 +375,18 @@ end
 
 local world1, world2, world3 = {}, {}, {}
 local world_list = {world1, world2, world3}
+local font_atlases = {
+    fbb35bee675f2295 = "f14daed0a7d38271", e01b1c60bb279a7c = "1a87fa21dafbd90e",
+    ["3da89f2c15b53d65"] = "86667f650dca00f9", ["7c63fea1f706eec4"] = "3454c1d97f395663",
+}
+local font_packages = {
+    ["fbb35bee675f2295"] = "09caa46bc556e38f", ["e01b1c60bb279a7c"] = "09caa46bc556e38f",
+    ["3da89f2c15b53d65"] = "c0b7644cc5c4aaa8", ["7c63fea1f706eec4"] = "c0b7644cc5c4aaa8",
+}
+local font_materials = {
+    ["fbb35bee675f2295"] = "b0496b27039825bd", ["e01b1c60bb279a7c"] = "b0496b27039825bd",
+    ["3da89f2c15b53d65"] = "702bd6ee6303dcca", ["7c63fea1f706eec4"] = "702bd6ee6303dcca",
+}
 local codes = {escape = 27, enter = 13, left = 37, up = 38, right = 39, down = 40}
 for number = 1, 12 do codes["f" .. number] = 111 + number end
 local function id(device, name)
@@ -388,7 +409,24 @@ s3d = {
     Application = {
         worlds = function() if not ctx.worlds_missing then return ctx.worlds_override or world_list end end,
         main_world = function() return world1 end,
-        can_get = function() return true end,
+        can_get = function(kind, resource)
+            if type(resource) == "table" then
+                equal(resource.frame, ctx.frame, "font resource ID lifetime")
+                if ctx.packages and kind ~= "package" then
+                    local package = font_packages[resource.hash]
+                    if not package and kind == "material" then
+                        package = resource.hash == "b0496b27039825bd" and "09caa46bc556e38f"
+                            or resource.hash == "702bd6ee6303dcca" and "c0b7644cc5c4aaa8" or nil
+                    end
+                    if package then return ctx.packages[package] and ctx.packages[package].available == true end
+                end
+                if ctx.font_failure == "resources" then return false end
+                if ctx.font_failure == "primary" and resource.hash == "fbb35bee675f2295" then return false end
+                if ctx.font_failure == "primary_atlas" and resource.hash == "f14daed0a7d38271" then return false end
+                if ctx.font_failure == "atlas" and kind == "texture" then return false end
+            end
+            return ctx.font_failure ~= "all"
+        end,
     },
     World = {
         units_by_resource = function(world, resource)
@@ -409,13 +447,51 @@ s3d = {
         resolution = function() return 1280, 720 end,
         set_visible = function() end,
         rect = function(...) return gui_entry("rect", ...) end,
-        text = function(...) return gui_entry("text", ...) end,
+        text = function(instance, text, font, size, material, ...)
+            if type(font) == "table" then
+                equal(font.frame, ctx.frame, "draw font ID lifetime")
+                equal(material.frame, ctx.frame, "draw material ID lifetime")
+                equal(material.hash, assert(font_materials[font.hash]), "localized font material")
+                local ink = assert(instance.font_material, "GUI-local font material")
+                equal(ink.atlas, assert(font_atlases[font.hash], "known static font"), "font/atlas pairing")
+                for _, hash in ipairs({"8035c266", "5e8455fe", "309e7783", "82b803a8", "a8ea55ba"}) do
+                    equal(ink[hash .. "00000000"], 0, "font material scalar")
+                end
+                equal(ink.e13777ce00000000.x, 1); equal(ink.e13777ce00000000.y, -1)
+                for i = 1, 4 do equal(ink["7701209e00000000"][i], 0, "font material vector") end
+            end
+            return gui_entry("text", instance, text, font, size, material, ...)
+        end,
         destroy_rect = function(_, handle) ctx.gui_entries[handle] = nil end,
         destroy_text = function(_, handle) ctx.gui_entries[handle] = nil end,
-        material = function() return {} end,
+        material = function(instance, resource)
+            equal(resource.frame, ctx.frame, "material ID lifetime")
+            ctx.material_calls = (ctx.material_calls or 0) + 1
+            if ctx.font_failure == "material" or (ctx.font_failure == "second_layer" and instance.world == world1) then
+                error("injected Chinese material failure")
+            end
+            instance.font_material = instance.font_material or {}
+            return instance.font_material
+        end,
     },
-    Material = {set_scalar = function() end, set_vector2 = function() end,
-        set_vector4 = function() end, set_texture = function() end},
+    Material = {
+        set_scalar = function(ink, slot, value)
+            equal(slot.frame, ctx.frame, "material scalar slot lifetime"); ink[slot.hash] = value
+        end,
+        set_vector2 = function(ink, slot, value)
+            equal(slot.frame, ctx.frame, "material vector2 slot lifetime"); ink[slot.hash] = value
+        end,
+        set_vector4 = function(ink, slot, value)
+            equal(slot.frame, ctx.frame, "material vector4 slot lifetime"); ink[slot.hash] = value
+        end,
+        set_texture = function(ink, slot, texture)
+            equal(slot.frame, ctx.frame, "material texture slot lifetime")
+            equal(texture.frame, ctx.frame, "atlas ID lifetime")
+            equal(slot.hash, "88bac99b00000000", "font atlas slot")
+            if ctx.font_failure == "setter" then error("injected atlas binding failure") end
+            ink.atlas = texture.hash
+        end,
+    },
     Keyboard = {button_id = function(name) return id("keyboard", name) end,
         pressed = function(code) return ctx.pressed[code] == true end},
     Mouse = {
@@ -452,6 +528,51 @@ update = function(...)
     return "prior-result", nil, 99, nil
 end
 shutdown = function(...) ctx.shutdown_args = pack(...); return "shutdown-result", nil, 8, nil end
+if CASE:find("^language_package_") then
+    ctx.packages, ctx.package_loads, ctx.package_flushes = {}, 0, 0
+    ctx.package_unloads, ctx.package_releases = 0, 0
+    ctx.package_failure = CASE:match("^language_package_failure_(.+)")
+    local function checked(operation, entry)
+        if ctx.package_failure == operation then error("injected package " .. operation .. " failure") end
+        assert(entry and not entry.released, "live resource package handle")
+    end
+    s3d.Application.resource_package = function(resource)
+        equal(resource.frame, ctx.frame, "package resource ID lifetime")
+        if ctx.package_failure == "create" then error("injected package create failure") end
+        assert(not ctx.packages[resource.hash] or ctx.packages[resource.hash].released)
+        local entry = {hash = resource.hash}
+        ctx.packages[resource.hash] = entry
+        return entry
+    end
+    s3d.Application.release_resource_package = function(entry)
+        checked("release", entry); assert(entry.unloaded, "unload before release")
+        entry.released = true; ctx.package_releases = ctx.package_releases + 1
+    end
+    s3d.ResourcePackage = {
+        load = function(entry)
+            ctx.package_loads = ctx.package_loads + 1; entry.started = true; checked("load", entry)
+        end,
+        has_loaded = function(entry) checked("poll", entry); return ctx.package_ready == true end,
+        flush = function(entry)
+            checked("flush", entry); assert(ctx.package_ready, "never block flushing an incomplete load")
+            assert(not entry.available, "flush only once"); entry.available = true
+            ctx.package_flushes = ctx.package_flushes + 1
+        end,
+        unload = function(entry)
+            checked("unload", entry)
+            for _, drawn in pairs(ctx.gui_entries) do
+                if drawn.kind == "text" and type(drawn.args[2]) == "table" then
+                    assert(font_packages[drawn.args[2].hash] ~= entry.hash, "GUI font users released first")
+                end
+            end
+            entry.unloaded, entry.available = true, false
+            ctx.package_unloads = ctx.package_unloads + 1
+        end,
+    }
+    if CASE == "language_package_missing_api" then s3d.ResourcePackage.flush = nil end
+    if CASE == "language_package_missing_create_api" then s3d.Application.resource_package = nil end
+    if CASE == "language_package_missing_release_api" then s3d.Application.release_resource_package = nil end
+end
 if CASE == "compat_unknown_stamp" then put32(GAME + 0x108, 0x12345678) end
 if CASE == "compat_pe_magic" then put(GAME, "XX") end
 if CASE == "compat_pe_offset" then put32(GAME + 60, 0x100000) end
@@ -462,7 +583,7 @@ if CASE == "compat_pe_short" then ctx.read_failure = {address = GAME, size = 64,
 if CASE == "compat_api_missing" then s3d.Gui.text = nil end
 if CASE == "compat_api_noncallable" then s3d.Gui.text = true end
 if CASE == "compat_font_resource" then s3d.Application.can_get = function() return false end end
-if CASE == "compat_font_material" then s3d.Material.set_texture = nil end
+if CASE == "compat_font_material" then s3d.Gui.material = nil end
 if CASE == "compat_font_pointer" then put64(GAME + 0x37c5478, 0) end
 if CASE == "compat_input_retry" then
     put(GAME + 0x12fde90, string.rep("\xcc", 20))
@@ -507,6 +628,14 @@ if CASE:find("^address_") then
     elseif CASE == "address_unaligned" then put64(start + 48, start + 65)
     elseif CASE == "address_invalid_count" then put64(start + 56, 0x100000001) end
 end
+-- @SYSTEM_FONT_MOCK@
+local observed_labels = {}
+HD2DAP_TEST_LABEL = function(text) observed_labels[#observed_labels + 1] = text end
+HD2DAP_TEST_REDRAW = function() observed_labels = {} end
+MOD_SOURCE = MOD_SOURCE:gsub("local function draw_text%(text, x, y, size, r, g, b%)\n",
+    "local function draw_text(text, x, y, size, r, g, b)\n    HD2DAP_TEST_LABEL(text)\n", 1)
+MOD_SOURCE = MOD_SOURCE:gsub("local function redraw%(%)\n",
+    "local function redraw()\n    HD2DAP_TEST_REDRAW()\n", 1)
 assert(loadstring(MOD_SOURCE, "@expanded/mod.lua"))()
 local M = HD2DualArmorPassive or HD2DualArmorCompatibilityProbe
 if CASE ~= "startup_locate" and not CASE:find("^probe_") and not CASE:find("^dynamic_")
@@ -533,6 +662,8 @@ end
 local click_positions = {
     hotkey = {305, 470}, reset = {487, 470}, close = {532, 25},
     apply = {400, 25}, select_second = {35, 350},
+    simplified = {180, 552}, traditional = {338, 552}, english = {504, 552},
+    prev = {35, 25}, next = {155, 25},
 }
 local function click(name, held)
     local position = assert(click_positions[name])
@@ -562,6 +693,11 @@ local function assert_no_temporaries()
     for path in pairs(ctx.files) do assert(not path:find("%.tmp%."), "temporary config leaked") end
 end
 local function has_text(text)
+    if M.visible then
+        for _, label in ipairs(observed_labels) do
+            if label:find(text, 1, true) then return true end
+        end
+    end
     for _, entry in pairs(ctx.gui_entries) do
         if entry.kind == "text" and entry.args[1]:find(text, 1, true) then return true end
     end
@@ -570,7 +706,9 @@ end
 
 local function gui_count()
     local count = 0
-    for _ in pairs(ctx.gui_entries) do count = count + 1 end
+    for _, entry in pairs(ctx.gui_entries) do
+        if entry.kind ~= "bitmap" then count = count + 1 end
+    end
     return count
 end
 
@@ -640,8 +778,18 @@ elseif CASE == "compat_input_retry" then
     assert(M.compatibility.input_entry:find("retry limit", 1, true))
 elseif CASE:find("^compat_font_") then
     for _ = 1, 180 do step({}) end
-    equal(ctx.writes, 0); equal(ctx.replaces, 0); assert_source(0)
-    assert(M.compatibility.font and not M.compatibility.font:find("resources available", 1, true), "font dependency failure reported")
+    equal(ctx.replaces, 0)
+    if CASE == "compat_font_resource" then
+        equal(ctx.writes, 0); assert_source(0)
+        assert(M.compatibility.font:find("menu fonts unavailable", 1, true))
+    else
+        assert_source(fixture.ids[2]); equal(M.applied, fixture.ids[2])
+        if CASE == "compat_font_material" then assert(M.compatibility.font:find("English fallback", 1, true)) end
+        if CASE == "compat_font_pointer" then
+            open_menu()
+            assert(M.compatibility.font:find("system font ", 1, true), "installed font ignores runtime font pointer")
+        end
+    end
 elseif CASE == "compat_live_input_loss" then
     choose_extra(); tap("enter"); tap("escape")
     equal(M.applied, fixture.ids[2]); equal(M.visible, false)
@@ -651,7 +799,7 @@ elseif CASE == "compat_live_input_loss" then
     equal(ctx.writes, before, "runtime maintenance refuses a lost input dependency")
     equal(get32(LIVE + 0x6c), 0); assert(M.runtime_status:find("compatibility", 1, true))
 elseif CASE == "compat_draw_failure" or CASE == "compat_live_api_loss" then
-    if CASE == "compat_draw_failure" then s3d.Gui.text = function() return nil end; tap("f9")
+    if CASE == "compat_draw_failure" then s3d.Gui.bitmap_uv = function() return nil end; tap("f9")
     else open_menu(); s3d.Gui.text = nil; step({}) end
     equal(M.visible, false); equal(ctx.cursor, false); equal(gui_count(), 0)
     equal(ctx.writes, 0); equal(ctx.replaces, 0)
@@ -1023,11 +1171,176 @@ elseif CASE == "ffi_aliases" then
     assert(tonumber(exports.hd2dap_v1_GetTickCount64()) > 0)
     equal(ffi.sizeof("HD2DualArmorMemRegion"), 4, "foreign type stays untouched")
     equal(ffi.sizeof("HD2DAP_v1_MemRegion"), 48, "private ABI")
+elseif CASE:find("^language_") then
+    local before_ini, before_cfg = ctx.files[INI], ctx.files[CFG]
+    if CASE:find("^language_package_") then
+        open_menu(); equal(M.display_language, "en", "pending language package uses English")
+        local expected = CASE == "language_package_tw" and "zh_tw" or "zh_cn"
+        if CASE:find("^language_package_missing_") then
+            ctx.package_ready = true; step({}); equal(ctx.package_loads, 0)
+            equal(M.display_language, "en", "missing loader API preserves fallback")
+            local missing = CASE == "language_package_missing_api" and "ResourcePackage.flush"
+                or CASE == "language_package_missing_create_api" and "Application.resource_package"
+                or "Application.release_resource_package"
+            assert(M.language_status:find(missing .. " unavailable", 1, true), "fallback names the missing API")
+        elseif CASE:find("^language_package_failure_") then
+            ctx.package_ready = true; step({}); equal(M.display_language, "en")
+            equal(M.failed, nil, "package failure does not disable module")
+            equal(ctx.package_loads, ctx.package_failure == "create" and 0 or 1)
+            ctx.package_failure = nil
+        elseif CASE == "language_package_retry" then
+            -- Start a failed load by injecting it before a different language choice.
+            ctx.package_failure = "load"; click("traditional")
+            equal(M.display_language, "en"); equal(ctx.package_loads, 2)
+            ctx.package_failure = nil; tap("escape"); step({}, 6000); open_menu()
+            equal(ctx.package_loads, 3, "manual reopen retries a failed load after backoff")
+            ctx.package_ready = true; step({}); equal(M.display_language, "zh_tw")
+            equal(ctx.package_releases, 1, "retry frees failed handle")
+        elseif CASE == "language_package_switch" then
+            tap("right"); click("traditional"); equal(ctx.package_loads, 2)
+            click("english"); ctx.package_ready = true; step({})
+            equal(M.display_language, "en", "late completion respects newer English choice")
+            click("traditional"); equal(M.display_language, "zh_tw")
+            assert(has_text("第 2 / 4 頁"), "background load preserves page")
+            equal(ctx.package_loads, 2, "reuse loaded language packages")
+        elseif CASE == "language_package_shutdown_pending" then
+            equal(ctx.package_flushes, 0)
+        else
+            for _ = 1, 5 do step({}) end
+            equal(ctx.package_loads, 1, "one handle while load is pending")
+            equal(ctx.package_flushes, 0, "incomplete load is not flushed")
+            if CASE == "language_package_closed" then tap("escape") end
+            ctx.package_ready = true; step({})
+            if CASE == "language_package_closed" then
+                equal(M.visible, false, "load completion does not open closed menu"); open_menu()
+            end
+            equal(M.display_language, expected, "loaded package restores requested language")
+            equal(ctx.package_flushes, 1)
+            step({}); equal(ctx.package_flushes, 1, "flush only once")
+        end
+        if CASE == "language_package_cleanup_deferred" then ctx.worlds_missing = true end
+        if CASE == "language_package_cleanup_unload" then ctx.package_failure = "unload" end
+        if CASE == "language_package_cleanup_release" then ctx.package_failure = "release" end
+        local result = pack(shutdown("package-exit", nil))
+        equal(result[1], "shutdown-result"); equal(result.n, 4)
+        if CASE == "language_package_cleanup_deferred" then
+            equal(ctx.package_releases, 0, "fonts retained while GUI cleanup is deferred")
+            ctx.worlds_missing = false; step({})
+        elseif ctx.package_failure then
+            equal(ctx.package_releases, 0, "cleanup failure retains handle for retry")
+            ctx.package_failure = nil; step({})
+            equal(M.failed, nil, "cleanup retry does not disable module")
+        end
+        for _, entry in pairs(ctx.packages) do assert(entry.released, "package handle released") end
+        if not CASE:find("switch") and not CASE:find("retry") then
+            equal(ctx.package_unloads, ctx.package_loads, "each owned load unloaded once")
+        end
+        equal(ctx.writes, 0); equal(ctx.files[CFG], before_cfg)
+        if not CASE:find("switch") and not CASE:find("retry") then equal(ctx.files[INI], before_ini) end
+    elseif CASE:find("^language_auto_") then
+        local expected = ({cn = "zh_cn", tw = "zh_tw", en = "en", unknown = "en"})[CASE:match("language_auto_(.+)")]
+        open_menu(); equal(M.menu_language, nil, "legacy settings stay automatic")
+        equal(M.display_language, expected, "automatic selection uses text language")
+        equal(ctx.files[INI], before_ini); equal(ctx.replaces, 0)
+        if expected == "zh_tw" then assert(has_text("偵察兵"), "official Traditional passive name") end
+    elseif CASE == "language_reload_en_game" or CASE == "language_reload" then
+        open_menu()
+        local preference = CONFIG_OVERRIDE:match("menu_language=([^\n]+)"):match("^%s*(.-)%s*$"):lower()
+        equal(M.menu_language, preference); equal(M.display_language, preference)
+        local key = CONFIG_OVERRIDE:match("menu_hotkey=([^\n]+)"):match("^%s*(.-)%s*$"):lower()
+        equal(M.hotkey, key); equal(ctx.files[INI], before_ini); equal(ctx.replaces, 0)
+    elseif CASE == "language_invalid" or CASE == "language_duplicate" then
+        open_menu(); equal(M.menu_language, "en"); equal(M.display_language, "en")
+        equal(M.hotkey, "f10", "invalid language preserves valid hotkey")
+        assert(M.language_config_error); equal(M.hotkey_config_error, nil)
+        equal(ctx.replaces, 0); click("traditional")
+        equal(M.language_config_error, nil); equal(M.hotkey, "f10"); equal(M.display_language, "zh_tw")
+    elseif CASE == "language_key_invalid" then
+        open_menu(); equal(M.menu_language, "zh_tw"); equal(M.display_language, "zh_tw")
+        equal(M.hotkey, "f9"); assert(M.hotkey_config_error); equal(M.language_config_error, nil)
+        click("english"); equal(M.hotkey_config_error, nil)
+        equal(ctx.files[INI], "settings_version=1\nmenu_hotkey=f9\nmenu_language=en\n")
+    elseif CASE == "language_click" then
+        choose_extra(); tap("right")
+        assert(has_text("Page 2 / 4") or has_text("第 2 / 4 页"))
+        click("traditional")
+        equal(M.menu_language, "zh_tw"); equal(M.display_language, "zh_tw"); equal(M.hotkey, "f9")
+        assert(has_text("第 2 / 4 頁"), "switch preserves current page")
+        equal(ctx.writes, 0, "language click does not apply passive")
+        equal(ctx.files[CFG], before_cfg); equal(M.selected, 0)
+        tap("enter"); equal(M.selected, fixture.ids[2], "switch preserves highlighted passive")
+        tap("escape"); open_menu(); equal(M.display_language, "zh_tw", "manual choice survives reopening")
+    elseif CASE == "language_save_cycle" then
+        open_menu(); click("hotkey"); tap("f10"); click("traditional")
+        equal(ctx.files[INI], "settings_version=1\nmenu_hotkey=f10\nmenu_language=zh_tw\n")
+        click("reset"); equal(M.hotkey, "f9")
+        equal(ctx.files[INI], "settings_version=1\nmenu_hotkey=f9\nmenu_language=zh_tw\n")
+        local handles = gui_count()
+        for _ = 1, 5 do click("english"); click("simplified"); click("traditional"); equal(gui_count(), handles) end
+        click("hotkey"); tap("f12")
+        equal(ctx.files[INI], "settings_version=1\nmenu_hotkey=f12\nmenu_language=zh_tw\n")
+        equal(M.visible, true); equal(ctx.writes, 0); equal(ctx.files[CFG], before_cfg)
+        tap("escape"); equal(gui_count(), 0, "language redraws leave no GUI handles")
+        equal(ctx.destroyed, 2); assert_no_temporaries()
+    elseif CASE == "language_capture_block" or CASE == "language_scene_block" or CASE == "language_focus_block" then
+        open_menu()
+        if CASE == "language_capture_block" then click("hotkey")
+        elseif CASE == "language_scene_block" then ctx.allowed = false
+        else ctx.focused = false end
+        click("traditional"); equal(M.menu_language, nil); equal(ctx.files[INI], before_ini)
+        equal(ctx.writes, 0); equal(ctx.replaces, 0)
+    elseif CASE:find("^language_save_failure_") then
+        open_menu(); local old_language, old_display = M.menu_language, M.display_language
+        ctx.save_failure = CASE:match("language_save_failure_(.+)")
+        click("traditional")
+        equal(M.menu_language, old_language); equal(M.display_language, old_display)
+        equal(M.hotkey, "f10"); equal(ctx.files[INI], before_ini)
+        equal(ctx.files[CFG], before_cfg); equal(ctx.writes, 0)
+        assert(has_text("Language save failed")); assert_no_temporaries()
+        ctx.save_failure = nil; click("traditional")
+        equal(M.display_language, "zh_tw"); equal(M.menu_language, "zh_tw"); equal(M.hotkey, "f10")
+    elseif CASE:find("^language_font_") and CASE ~= "language_font_choose" then
+        ctx.font_failure = CASE:match("language_font_(.+)")
+        local texture_setter = s3d.Material.set_texture
+        if ctx.font_failure == "api" then s3d.Material.set_texture = nil end
+        open_menu()
+        if ctx.font_failure == "primary" or ctx.font_failure == "primary_atlas" then
+            equal(M.display_language, "zh_cn", "alternate verified font works")
+        else
+            equal(M.menu_language, "zh_cn"); equal(M.display_language, "en")
+            assert(has_text("Chinese font unavailable")); equal(ctx.files[INI], before_ini)
+            tap("escape"); ctx.font_failure = nil; s3d.Material.set_texture = texture_setter; open_menu()
+            equal(M.display_language, "zh_cn", "reopening retries requested language")
+        end
+        equal(ctx.writes, 0); equal(ctx.files[CFG], before_cfg); equal(ctx.replaces, 0)
+    elseif CASE == "language_font_choose" then
+        open_menu(); ctx.font_failure = "resources"; click("traditional")
+        equal(M.menu_language, "zh_tw"); equal(M.display_language, "en")
+        equal(ctx.files[INI], "settings_version=1\nmenu_hotkey=f9\nmenu_language=zh_tw\n")
+        assert(has_text("Chinese font unavailable"))
+        tap("escape"); ctx.font_failure = nil; open_menu(); equal(M.display_language, "zh_tw")
+        equal(ctx.writes, 0)
+    elseif CASE == "language_all_fonts_lost" then
+        open_menu(); ctx.font_failure = "all"; click("traditional")
+        equal(M.visible, false); equal(ctx.cursor, false); equal(gui_count(), 0)
+        equal(M.menu_language, "zh_tw"); equal(ctx.writes, 0); equal(ctx.destroyed, 2)
+    else error("unknown language case: " .. CASE) end
+elseif CASE == "pagination_keyboard" or CASE == "pagination_mouse" or CASE == "pagination_single" then
+    choose_extra()
+    local previous = CASE == "pagination_mouse" and function() click("prev") end or function() tap("left") end
+    local following = CASE == "pagination_mouse" and function() click("next") end or function() tap("right") end
+    local pages = CASE == "pagination_single" and 1 or 4
+    previous(); assert(has_text("Page " .. pages .. " / " .. pages), "first page wraps backward")
+    following(); assert(has_text("Page 1 / " .. pages), "last page wraps forward")
+    for page = 2, pages do following(); assert(has_text("Page " .. page .. " / " .. pages)) end
+    following(); assert(has_text("Page 1 / " .. pages), "forward wrap after sequential navigation")
+    equal(ctx.writes, 0); equal(ctx.replaces, 0); equal(M.selected, 0)
+    tap("enter"); equal(M.selected, fixture.ids[2], "pagination preserves highlighted passive")
 elseif CASE == "zh_ui" or CASE == "font_fallback" then
-    if CASE == "font_fallback" then put64(GAME + 0x37c5478, 0) end
+    if CASE == "font_fallback" then ctx.font_failure = "resources" end
     open_menu()
     assert(has_text(CASE == "zh_ui" and "修改快捷键" or "CHANGE KEY"), "localized toolbar")
-    equal(M.box[4], 600)
+    equal(M.box[4], 680)
     local rows = 0
     for _, entry in pairs(ctx.gui_entries) do
         if entry.kind == "rect" and entry.args[2].x == 624 then rows = rows + 1 end
